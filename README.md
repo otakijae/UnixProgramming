@@ -2,124 +2,6 @@
 
 ## 20180903
 
-- 포인터
-
-  ```c
-  #include <stdio.h>
-
-  void swapNumber(int *first, int *second)
-  {
-      int temp;
-      temp = *first;
-      *first = *second;
-      *second = temp;
-  }
-
-  int main()
-  {
-      int num1 = 10;
-      int num2 = 20;
-
-      swapNumber(&num1, &num2);
-
-      printf("%d %d\n", num1, num2);
-
-      return 0;
-  }
-  ```
-
-  ```c
-  20 10
-  ```
-
-  변수의 메모리 주소를 함수에 전달하면 함수 안에서는 메모리 주소에 접근하여 값을 저장할 수 있음
-
-  함수의 반환값은 값을 하나만 반환할 수 있는데 이처럼 매개변수를 포인터로 사용하면 함수 바깥으로 여러 개의 값을 전달할 수 있음
-
-  지금까지 scanf 함수를 사용할 때 변수를 그대로 넣지 않고 &를 사용하여 변수의 메모리 주소를 넣었다
-  왜냐하면 scanf함수는 값을 여러 개 입력받을 수 있는데 반환값만으로는 여러 개의 값을 함수 바깥으로 가져올 수 없었기 때문
-
-  ```c
-  int num1;
-  int num2;
-  int num3;
-
-  scanf("%d %d %d", &num1, &num2, &num3); // scanf에서 값을 3개 가져옴(scanf는 바깥으로 값을 3개 전달)
-  ```
-
-  ![](https://dojang.io/pluginfile.php/614/mod_page/content/31/unit63-4.png)
-
-- 배열과 포인터
-
-  ```c
-  #include <stdio.h>
-
-  void printArray(int arr[], int count)    // 배열의 포인터와 요소의 개수를 받음
-  {
-      for (int i = 0; i < count; i++)
-      {
-          printf("%d ", arr[i]);
-      }
-
-      printf("\n");
-  }
-
-  int main()
-  {
-      int numArr[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-
-      printArray(numArr, sizeof(numArr) / sizeof(int));    // 배열과 요소의 개수를 넣음
-
-      return 0;
-  }
-  ```
-
-  ```
-  1 2 3 4 5 6 7 8 9 10
-  ```
-
-  - 함수에서 배열을 매개변수로 사용할 때는 매개변수 이름 뒤에 []만 붙이면 됨
-    (대괄호 안에 크기를 지정하더라도 무시된다)
-  - 즉, arr[]은 배열의 메모리 주소를 담고 있는 포인터이며 배열의 실제 크기를 알 수 없으므로 다른 매개변수를 통해 배열의 크기를 받아야함
-  - 이때 요소의 개수를 구하는 방법은 sizeof(배열) / sizeof(자료형)임
-    배열의 크기인 10을 그대로 넣어도 되지만 sizeof로 크기를 구하면 배열의 크기가 바뀌었을 때 코드를 수정하지 않아도 됨
-  - printArray 안에서는 매개변수 arr과 count를 사용하여 배열의 요소를 출력할 수 있음
-  - 매개변수를 arr[]과 같이 지정했다면 arr은 포인터임
-    따라서 다음과 같이 함수 안에서 매개변수로 받은 배열의 요소를 변경하면 함수 바깥에 있는 배열의 요소가 바뀌게 됨
-
-  ```c
-  #include <stdio.h>
-
-  void printArray(int *arr, int count)    // 매개변수를 포인터로 지정하여 배열을 받음
-  {
-      for (int i = 0; i < count; i++)
-      {
-          printf("%d ", arr[i]);
-      }
-
-      printf("\n");
-  }
-
-  int main()
-  {
-      int numArr[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-
-      printArray(numArr, sizeof(numArr) / sizeof(int));    // 배열과 요소의 개수를 넣음
-
-      return 0;
-  }
-  ```
-
-  ```
-  1 2 3 4 5 6 7 8 9 10
-  ```
-
-  - 1차원 배열은 int *arr과 같이 int형 포인터로 받을 수 있음
-    물론 포인터로는 배열의 크기를 알 수 없으므로 다른 매개변수를 통해 배열의 크기를 받을 수 있음
-  - (pArr + n)은, 포인터 pArr이 가리키는 곳에서 n칸 건너편의 요소의 값을 참조하라 라는 뜻
-  - 공식이라 생각하기 : arr[i] == *(arr + i)
-  - 배열을 다룰 때 범위를 넘어선 접근을 하지 않도록 주의해야함. 포인터 연산을 하다보면, 간혹 선언해놓은 배열의 범위를 종종 넘어서는 경우가 있음. 이러한 오류는 컴파일 과정에서 발견되지 않고, 원하지 않는 결과를 가져옴. 주의할 것
-
 - UNIX 프로그래밍 : UNIX의 system call(OS가 가지고 있는 function을 호출하는 것)을 사용하는 프로그래밍. 예를 들어 운영체제에 구현이 돼있는 SemaphoreWait 함수를 프로세스에서 호출해서 사용하는 것. 
 
 - XShell 사용 방법
@@ -233,166 +115,274 @@
   $ cp file1 file2 [file1의 내용을 복사하여 file2를 생성]
   $ mv file1 file2 [file1의 이름을 file2로 변경]
   $ mv file1 dir1 [file1을 dir1으로 이동]
-  $ rm filename [해당 file 삭제]
+  $ rm filename [해당 file 삭제, 바로 삭제되니까 주의, 중요한 것들 copy 미리 해두기]
+  $ rmdir dirname [directory 삭제, dir 비어있지 않으면 삭제 불가, 안에 파일/폴더 다 지우고 수행하기]
   $ mkdir dirname [해당하는 이름의 directory를 생성]
   $ cd dirname [해당 directory로 이동]
   $ chmod 0700 filename (or dirname) [해당 file(또는 directory)의 access permission 변경]
   ```
 
-- 실습1. vi editor 작성 실습
 
-  ```c
-  #include<stdio.h>
+## 20180905
 
-  int main(void){
-      
-      int i, data[10];
-      
-      for (i=0;i<10;i++){
-          scanf("%d", &data[i]);
-      }
-      
-      for (i=0;i<10;i++){
-          data[i]=data[i]+5;
-      }
-      
-      for (i=0;i<10;i++){
-          printf("%-5d", data[i]);
-      }
-      
-      printf("\n");
-      
-      return 0;
-  }
-  ```
+- 실습4 입력 10개 다 받고 덧셈만 함수에서 실행하면 됨. 맞게 함
 
-- 실습2. 함수 사용 실습
-
-  ```C
-  int add_five(int data){
-      return data + 5;
-  }
-
-  int main(void){
-      int i, data[10];
-
-      for(i=0;i<10;i++){
-          scanf("%d", &data[i]);
-          data[i] = add_five(data[i]);
-      }
-
-      for(i=0;i<10;i++){
-          printf("%-5d", data[i]);
-      }
-
-      printf("\n");
-
-      return 0;
-  }
-  ```
-
-- 실습3. 포인터 사용 연습
-
-  ```c
-  int add_five(int *data){
-      *data = *data + 5;
-  }
-
-  int main(void){
-      int i, data[10];
-
-      for(i=0;i<10;i++){
-          scanf("%d", &data[i]);
-          add_five(&data[i]);
-      }
-
-      for(i=0;i<10;i++){
-          printf("%-5d", data[i]);
-      }
-
-      printf("\n");
-
-      return 0;
-  }
-  ```
-
-- 실습4. 배열 포인터 사용 연습
-
-  ```c
-  int add_five(int *data){
-      int i;
-      for(i=0;i<10;i++){
-          scanf("%d", &data[i]);
-          data[i] = data[i] + 5;
-      }
-  }
-
-  int main(void){
-      int i, data[10];
-
-      add_five(data);
-
-      for(i=0;i<10;i++){
-          printf("%-5d", data[i]);
-      }
-
-      printf("\n");
-
-      return 0;
-  }
-  ```
-
-  ```c
-  int add_five(int *data){
-      int i;
-      for(i=0;i<10;i++){
-          scanf("%d", (data + i));
-          *(data + i) = *(data + i) + 5;
-      }
-  }
-
-  int main(void){
-      int i, data[10];
-
-      add_five(data);
-
-      for(i=0;i<10;i++){
-          printf("%-5d", data[i]);
-      }
-
-      printf("\n");
-
-      return 0;
-  }
-  ```
-
-- 실습5
+- File System Permissions
 
   ```
-  //home directory에 LAB09-03 directory를 만든 후, 1번, 2번, 3번, 4번에서 만든 파일들을 LAB09-03 directory로 옮긴다
-
-  $ mkdir LAB09-03
-  $ mv test1.c LAB09-03
-  $ mv test1.out LAB09-03
+  $ ls -l
+  $ ls -al
   ```
 
-- 실습6
-
   ```
-  //LAB09-03 directory의 파일 중 프로그램 파일에는 0600, 실행파일에는 0700의 access
-  permission을 부여 한다
+  합계 4
+  drwx------. 2 s13011022 class 4096  9월  5 00:56 LAB09-03
 
-  $ chmod 0600 test1.c
-  $ chmod 0700 test1.out
-  ...
+  합계 64
+  -rw-------. 1 s13011022 class  233  9월  3 12:35 test1.c
+  -rwx------. 1 s13011022 class 8624  9월  3 21:45 test1.out
+  -rw-------. 1 s13011022 class  260  9월  3 21:43 test2.c
+  -rwx------. 1 s13011022 class 8664  9월  3 21:45 test2.out
+  -rw-------. 1 s13011022 class  254  9월  3 21:49 test3.c
+  -rwx------. 1 s13011022 class 8664  9월  3 21:49 test3.out
+  -rw-------. 1 s13011022 class  262  9월  3 21:55 test4.c
+  -rwx------. 1 s13011022 class 8664  9월  3 21:55 test4.out
   ```
 
-- 실습7
+  각 subdirectory 및 file에 관한 상세 정보를 함께 표시
+  rwx == 4+2+1 == 7
+  d : 디렉토리 표시, r : 읽기 가능, w : 쓰기 가능, x : 실행 가능
+  0 rwx rwx rwx : 내가 / 나랑 같은 그룹의 유저들이 / 나 및 나랑 같은 그룹 이외의 유저들이 읽/쓰/실 가능
+  chmod 0700 filename(or dirname) 할 때 0700의 의미가 이것임
+  https://www.tutorialspoint.com/unix/unix-file-permission.htm
+  https://en.wikipedia.org/wiki/File_system_permissions
 
-  ```
-  // LAB09-03 directory에 0700의 access permission을 부여한다
+  | Number | Octal Permission Representation                           | Ref  |
+  | :----: | --------------------------------------------------------- | :--: |
+  | **0**  | No permission                                             | ---  |
+  | **1**  | Execute permission                                        | --x  |
+  | **2**  | Write permission                                          | -w-  |
+  | **3**  | Execute and write permission: 1 (execute) + 2 (write) = 3 | -wx  |
+  | **4**  | Read permission                                           | r--  |
+  | **5**  | Read and execute permission: 4 (read) + 1 (execute) = 5   | r-x  |
+  | **6**  | Read and write permission: 4 (read) + 2 (write) = 6       | rw-  |
+  | **7**  | All permissions: 4 (read) + 2 (write) + 1 (execute) = 7   | rwx  |
 
-  $ chmod 0700 LAB09-03
-  ```
+  | Symbolic Notation | Numeric Notation | English                                                      |
+  | :---------------: | :--------------: | ------------------------------------------------------------ |
+  |   `----------`    |       0000       | no permissions                                               |
+  |   `-rwx------`    |       0700       | read, write, & execute only for owner                        |
+  |   `-rwxrwx---`    |       0770       | read, write, & execute for owner and group                   |
+  |   `-rwxrwxrwx`    |       0777       | read, write, & execute for owner, group and others           |
+  |   `---x--x--x`    |       0111       | execute                                                      |
+  |   `--w--w--w-`    |       0222       | write                                                        |
+  |   `--wx-wx-wx`    |       0333       | write & execute                                              |
+  |   `-r--r--r--`    |       0444       | read                                                         |
+  |   `-r-xr-xr-x`    |       0555       | read & execute                                               |
+  |   `-rw-rw-rw-`    |       0666       | read & write                                                 |
+  |   `-rwxr-----`    |       0740       | owner can read, write, & execute; group can only read; others have no permissions |
+
+- UNIX file 접근 primitives
+
+  - File : byte들의 linear sequence
+  - (하드웨어, 시스템 측) 저수준 파일 입출력 : open, close, read, write, dup, dup2, fcntl, lseek, fsync
+  - (애플리케이션 측) 고수준 파일 입출력 : fopen, fclose, fread, fwrite, fputs, fgets, fprintf, fscanf, freopen, fseek
+  - ==> 이렇게 지금까지 배운 것들은 쉽게 사용할 수 있게 누군가 만들어놓은 함수/기능
+  - ==> Shell 상의 명령 또한 누군가가 system call로 구현해놓은 기능들을 사용하는 것임
+  - 수업 때는 우리가 직접 system call를 활용하여 기능들을 구현할 것임
+
+- file descriptor
+
+  - 현재 open된 파일을 구분할 목적으로 UNIX가 붙여놓은 번호
+  - OS는 파일 open 시, 가령 file table p1에서 배열로 파일에 대한 정보를 저장해둔다.
+    [FILE *fp; 파일 포인터] 어떤 파일을 파일 포인터로 가리키고 있는지와 같은 파일에 대한 모든 정보들 저장
+  - 그러면서 파일에 대한 정보가 배열에 저장이 되니까 배열의 index로 파일을 구분함
+    0 : 표준 입력
+    1 : 표준 출력
+    2 : 표준 오류 출력
+    3 : 여기서부터 파일 입출력
+    ...
+  - file table이 배열이니까 한 프로세스가 동시에 open할 수 있는 file의 갯수가 제한이 있음
+    그래서 close라는 system call을 사용해서 닫아준다
+
+- open 시스템 호출
+
+  - 기존의 file을 open하거나, 새롭게 file을 생성하여 open하는 system call
+
+  - 기존의 file이 있으면 filename과 oflag만 적어주면 되고, 기존에 file이 없으면 만들기위해 mode까지 적어주면 된다.
+
+    filename : 파일 이름
+
+    oflag : file을 access하는 방식
+    파일을 access하는 방식 굳이 나눠놓은 이유는, permission과 관련
+    가령, 파일 open할 때 나에게 읽기 권한이 없는데 읽으려고 하면 파일이 열리지 않는다.
+    권한과 맞아들어가야 파일을 열 수 있기 때문에 구분돼있다.
+
+    - O_RDONLY(읽기만), O_WRONLY(쓰기만), O_RDWR(읽기, 쓰기 다)
+    - O_CREAT(파일 생성)
+    - O_EXCL(exclusive), O_TRUNC(지우고 다시), O_APPEND(이어서)
+
+    mode : file을 새로 생성할 때만 사용. 0600, 0664, 0644 등등
+
+    return 값
+
+    - 실행 성공 시 file descriptor (음이 아닌 정수) 반환
+    - 실행 실패 시 -1 반환
+
+  - 사용법
+
+    ```c
+    #include<sys/types.h>
+    #include<sys/stat.h>
+    #include<fcntl.h>
+
+    int open(const char *filename, int oflag, [mode_t mode]);
+    ```
+
+    ```c
+    fd1 = open("test1.c", O_RDWR);
+    fd2 = open("test2.c", O_RDWR | O_CREAT, 0600);
+    ```
+
+    test1.c 파일을 읽기/쓰기 전용으로 열겠다
+    test2.c 파일을 읽기/쓰기 전용으로 여는데, 기존에 파일이 없으면 0600권한(나만 읽기/쓰기 가능하게)으로 만들겠다
+    실행 중 기존에 파일이 있으면 O_CREAT 옵션과 권한이 무시됨
+
+    ```c
+    fd = open("test.c", O_RDWR | O_CREAT | O_EXCL, 0600);
+    ```
+
+    O_EXCL : 기존에 파일이 있으면 안 열고, 없어야만 파일을 만들어서 열겠다. Exclusively 파일이 없어야만 실행
+    기존에 파일이 있으면 파일을 안 열면서 실행 실패 -1을 return. fd = -1 이렇게 된다
+    O_EXCL 옵션은 O_CREAT랑 같이 사용해야만함
+
+    ```c
+    fd = open("test.c", O_RDWR | O_CREAT | O_TRUNC, 0600);
+    ```
+
+    O_TRUNC : 기존에 파일이 있으면 파일 지우고 다시 만든다. 없으면 파일 생성
+    O_TRUNC 옵션은 O_CREAT랑 같이 사용해야만함
+
+    ```c
+    fd = open("test.c", O_RDWR | O_CREAT | O_APPEND, 0600);
+    ```
+
+    O_APPEND : 기존에 파일이 있으면 덮어쓰지 않고, 이어서 작성한다. 파일 포인터를 제일 마지막으로 보낸다. 없으면 파일 생성
+    기존에 파일을 열면 파일포인터가 제일 앞에 위치해있어서 파일에 write하면 맨 앞에서부터 덮어쓰게 됨
+    근데 덮어쓰지 않고, 이어서 작성하려면 O_APPEND 옵션을 붙여주면 된다.
+    근데 read할 때, O_APPEND 옵션을 붙이면 파일 포인터가 맨 뒤로 가서 꼬이게 된다.
+
+- creat 시스템 호출
+
+  - file을 생성하여 open하거나, 기존 file을 open하는 system call
+
+  - 사용법
+
+    ```c
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <fcntl.h>
+
+    int creat(const char *filename, mode_t mode);
+    ```
+
+    open("file", O_WRONLY | O_CREAT | O_TRUNC, mode);
+    file을 쓰기 가능한 상태로 open함
+    file이 이미 존재하면, 두 번째 권한 인자는 무시함. 기존 파일 존재하면 open하면서 0 반환
+
+- close 시스템 호출
+
+  - open된 file을 close할 때 사용
+
+  - 프로세스 종료 시 open된 file들을 자동으로 close해주지만, 동시에 open할 수 있는 file수가 제한되기 때문에(파일 테이블 배열에 올라가니까) close를 사용한다
+
+    file des : open된 파일의 file descriptor;
+
+    return 값 : 성공 시 0; 실패 시 -1;
+
+  - ```c
+    #include <unistd.h>
+
+    int close(int filedes);
+    ```
+
+  - ```c
+    close(fd)
+    ```
+
+- read 시스템 호출
+
+  - open된 file로부터 지정한 byte수 만큼의 data를 읽어 지정된 저장장소에 저장하는 명령
+
+  - 사용법
+
+    ```c
+    #include <unistd.h>
+
+    ssize_t read(int filedes, void *buffer, size_t nbytes);
+    ```
+
+    filedes : open된 file의 file descriptor
+
+    *buffer : 읽은 data를 저장할 곳의 주소; data type은 상관 없음
+
+    nbytes : 읽을 byte 수, data type에 상관 없이 지정된 byte 수 만큼 읽음
+
+    읽어올 데이터 타입에 맞게 byte 지정해주기
+    가령, int를 읽어야하는데 4byte 말고 5byte라고 하면 정수를 제대로 읽어오지 않고 하나 더 읽어와서 꼬임
+
+    return값
+
+    - 성공시 실제읽힌 byte 수 / 실패시 -1
+    - return 값 < nbytes이면, 파일에 남은 data가 nbytes보다 적은 경우
+    - 더 이상 읽을 내용이 없으면 return 값은 0
+    - 혹시나 -1이 반환이 되는 경우 read에 실패한건데, 없는 파일을 열거나 open 잘못했을 때 -1을 return 하니까 어디서 -1을 return 하는지 잘 확인해보기
+    - 이걸로 파일에서 더 읽을게 있는지 없는지 파악하면 됨
+
+  - ```c
+    #include <unistd.h>
+
+    char buffer[100];
+
+    fd = open("test", O_RDWR | O_CREAT, 0600);
+
+    n = read(fd, buffer, 4 * sizeof(int));
+    ```
+
+    16byte만큼 읽어서 buffer에 저장
+
+- write 시스템 호출
+
+  - 지정된 저장장소에서 지정한 byte수 만큼의 data를 읽어 open된 file에 쓰는 명령
+
+  - File pointer or read-write pointer : 쓰여질 다음 byte의 위치를 나타냄
+
+  - 사용법
+
+    ```c
+    #include <unistd.h>
+
+    ssize_t write(int filedes, const void *buffer, size_t nbytes);
+    ```
+
+    filedes : write를 할 file의 descriptor
+
+    *buffer : write 할 내용이 들어 있는 저장 장소의 주소
+
+    nbytes : write 할 byte의 수
+
+    return값
+
+    - 보통은 return값 = n
+    - return 값 < n이면, 쓰는 도중 media가 full
+    - 만약 쓰기 전에 꽉 차면 -1 return
+
+  - 기존 file을 open하고 바로 write하면, 포인터가 맨 처음을 가리키고 있어서 처음 문자부터 덮어씌움
+    그래서 ```fd = open("data", O_WRONLY | O_APPEND);``` 이렇게 파일 포인터를 파일 맨 끝으로 이동시켜줘야함
 
 - ​
+
+- 왜 rwx 인자로 정할 때 맨 앞에 0으로 해야하는지, 4자리 중에서 맨 앞에 0은 뭐인지
+
+- 35 write 하면 아스키코드 문자 #으로 변경되는 이유
+
