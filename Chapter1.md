@@ -122,7 +122,7 @@
   $ chmod 0700 filename (or dirname) [해당 file(또는 directory)의 access permission 변경]
   ```
 
-## 20180905
+## File System Permissions
 
 - 실습4 입력 10개 다 받고 덧셈만 함수에서 실행하면 됨. 맞게 함
 
@@ -182,3 +182,4 @@
   |   `-rwxr-----`    |       0740       | owner can read, write, & execute; group can only read; others have no permissions |
 
   ​
+

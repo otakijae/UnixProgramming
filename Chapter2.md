@@ -456,10 +456,5 @@
 
     ```
     error ... : No such file or directory
-
-    ```
-
-## 20180912
-
-- ​
-
+```
+    ​

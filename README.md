@@ -548,6 +548,18 @@
 
   - ### mycopy 실습 요점
 
+    ```C
+    		nread = read(fd1, buffer, BUFSIZE);
+            while(nread > 0){
+                write(fd2, buffer, nread);
+                nread = read(fd1, buffer, BUFSIZE);
+            }
+    ```
+
+    이렇게 nread 값을 사용해서 write하는 이유 :
+    write할 때 512 byte 단위로 받아오는데, 512 그대로 write하면 (마지막 512byte에서 512만큼 다 안 채워져있는 경우, 불필요한 아무 것도 안 없는 쓰레기 부분마저 write를 하기 때문에) copy 같은 기능을 수행할 때 파일이 더 커져서 내용이 복사가 될 수 있다.
+    그래서 nread라는 변수에 read()한만큼의 byte를 저장해서 그만큼만 write를 해주면 된다.
+
     read return값
 
     - 성공시 실제읽힌 byte 수 / 실패시 -1
@@ -744,3 +756,9 @@
   ```
 
 - ​
+
+- 할 일
+
+  - P3-2.c 다시 해보기 맞게 한 듯. 다시 한 번 더 천천히 연습해볼 것
+  - P3-3.c 과제 마무리할 것
+  - P4.c 실습 예습해볼 것
