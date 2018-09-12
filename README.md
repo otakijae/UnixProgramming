@@ -656,109 +656,85 @@
   }
   ```
 
-- 2-a / b / c.
-  읽기쓰기 가능한 "data2" file을 생성하고, 문자 ‘X'를 10개 씁니다.
-  "data2" file의 첫 번째 위치로 file pointer를 옮긴 후 문자 ‘Y'를 하나 씁니다.		
-  "data2" file의 가장 마지막 위치로 file pointer를 옮긴 후 문자 ‘Y'를 하나 씁니다.
-
-  ```c
-  #include<stdio.h>
-  #include<sys/types.h>
-  #include<sys/stat.h>
-  #include<fcntl.h>
-
-  int main(void){
-
-      int fd, i, p;
-      char ch1, ch2;
-      ch1 = 'X';
-      ch2 = 'Y';
-
-      fd = open("data2", O_RDWR | O_CREAT | O_TRUNC, 0600);
-
-      for(i=0;i<10;i++){
-          write(fd, &ch1, sizeof(char));
-      }
-
-      lseek(fd, 0, SEEK_SET);
-      write(fd, &ch2, sizeof(char));
-      lseek(fd, 0, SEEK_END);
-      write(fd, &ch2, sizeof(char));
-
-      return 0;
-  }
-  ```
-
-   2-d.		
-  "data2" file의 2, 4, 6, 8번째 문자를 ‘Z'로 바꾸어 씁니다.
-
-  ```c
-  #include<stdio.h>
-  #include<sys/types.h>
-  #include<sys/stat.h>
-  #include<fcntl.h>
-
-  int main(void){
-
-      int fd, i, p;
-      char ch1, ch2, ch3, ch4, ch5, ch6;
-
-      ch1 = 'X';
-      ch2 = 'Y';
-      ch3 = 'Z';
-      ch4 = 'T';
-      ch5 = 'S';
-      ch6 = 'W';
-
-      fd = open("data2", O_RDWR | O_CREAT | O_TRUNC, 0600);
-
-      for(i=0;i<10;i++){
-          write(fd, &ch1, sizeof(char));
-      }
-
-      for(i=1;i<9;i+=2){
-          lseek(fd, +i, SEEK_SET);
-          write(fd, &ch3, sizeof(char));
-      }
-
-      return 0;
-  }
-  ```
-
-   2-e.		
-  "data2" file의 15번째 위치에 문자 ‘T'를 씁니다.
-
-  ```c
-
-  ```
-
-   2-f.		
-  "data2" file의 뒤에서 2번째 위치에 문자 ‘S'를 씁니다.	
-
-  ```c
-
-  ```
-
-- 2-g.
-  'S' 바로 앞에 문자 ‘W'를 씁니다.	
-
-  ```c
-
-  ```
-
-   2-h.		
-  프로그램 실행 후 cat 명령을 이용하여 “data2" file의 내용이 ”YZXZXZXZXXYWST“ 인지 확인 합니
+- 2.
+  a. 읽기쓰기 가능한 "data2" file을 생성하고, 문자 ‘X'를 10개 씁니다.
+  b. "data2" file의 첫 번째 위치로 file pointer를 옮긴 후 문자 ‘Y'를 하나 씁니다.		
+  c. "data2" file의 가장 마지막 위치로 file pointer를 옮긴 후 문자 ‘Y'를 하나 씁니다.
+  d. "data2" file의 2, 4, 6, 8번째 문자를 ‘Z'로 바꾸어 씁니다.
+  e. "data2" file의 15번째 위치에 문자 ‘T'를 씁니다.
+  f. "data2" file의 뒤에서 2번째 위치에 문자 ‘S'를 씁니다.
+  g. 'S' 바로 앞에 문자 ‘W'를 씁니다.
+  h. 프로그램 실행 후 cat 명령을 이용하여 “data2" file의 내용이 ”YZXZXZXZXXYWST“ 인지 확인 합니
   다. vi 명령으로 ”data" file의 내용을 확인 합니다. cat 명령으로 확인한 내용과의 차이점을 설명 하시
   오.
 
   ```c
+  #include<stdio.h>
+  #include<sys/types.h>
+  #include<sys/stat.h>
+  #include<fcntl.h>
+  #include<unistd.h>
+
+  int main(){
+      int fd, i;
+      char ch;
+
+      ch = 'X';
+
+      fd = open("data2", O_RDWR | O_CREAT | O_TRUNC, 0600);
+
+      for(i=0;i<10;i++){
+          write(fd, &ch, sizeof(char));
+      }
+
+      lseek(fd, 0, SEEK_SET);
+      write(fd, "Y", sizeof(char));
+
+      lseek(fd, 0, SEEK_END);
+      write(fd, "Y", sizeof(char));
+
+      for(i=1;i<8;i+=2){
+          lseek(fd, i, SEEK_SET);
+          write(fd, "Z", sizeof(char));
+      }
+
+      lseek(fd, 14, SEEK_SET);
+      write(fd, "T", sizeof(char));
+
+      lseek(fd, -2, SEEK_END);
+      write(fd, "S", sizeof(char));
+
+      lseek(fd, -2, SEEK_CUR);
+      write(fd, "W", sizeof(char));
+
+      return 0;
+  }
+  ```
+
+  - 결과
+
+  index 0부터 14 위치까지 문자를 썼지만 cat 명령으로 data2를 보면 14개의 문자만 출력이 되고, vi 명령으로 파일을 보면 중간에 특수 문자가 있는 것을 볼 수 있다
+  index 11 위치에는 데이터 아무것도 쓰지 않았기 때문에 cat 명령으로는 아예 출력이 안 된 것이고, vi 명령으로는 빈 값을 뜻하는 쓰레기 값이 들어가있어서 이렇게 출력이 된 것임
 
   ```
+  //cat data2
+  YZXZXZXZXXYWST
+
+  //vi data2
+  YZXZXZXZXXY^@WST
+  ```
+
+  ### P3-2 실습에서 요점 및 주의할 점
+
+  - SEEK_END는 항상 맨 마지막 문자 다음 위치로 위치한다
+  - 포인터는 데이터를 쓴 후, 그 다음 데이터가 쓰여질 위치로 이동한다
+  - 끝에서 두 번째 위치에 문자를 쓰라고 하면 -2를 하는 이유가 SEEK_END는 항상 맨 마지막 문자 다음 위치로 위치하기 때문
+
+## 20180912
 
 - ​
 
-- 할 일
 
-  - P3-2.c 다시 해보기 맞게 한 듯. 다시 한 번 더 천천히 연습해볼 것
+- 할 일
   - P3-3.c 과제 마무리할 것
   - P4.c 실습 예습해볼 것

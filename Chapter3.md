@@ -107,7 +107,7 @@ write return 값
 
 ### Access Permission
 
-- [file mode](https://github.com/ninetyfivejae/UnixProgramming/blob/master/Chapter1.md#File System Permissions)
+- [file mode](https://github.com/ninetyfivejae/UnixProgramming/blob/master/Chapter1.md#file-system-permissions)
 
 - 상징형 모드
   0764 = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IROTH
