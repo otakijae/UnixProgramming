@@ -620,7 +620,7 @@
 
 ## 20180910
 
-- 1.
+- p3-1.
   아래 코멘트 부분에 해당하는 코드를 작성하여, 10개의 정수를 data1[] 배열에 입력받아 파일에 저장 한 후, 다시 파일에서 읽은 10개의 정수를 data2[] 배열에 저장하고, 두 배열의 내용을 출력하는 프로그램을 작성 하시오. lseek() 명령을 사용 합니다.
 
   ```c
@@ -656,7 +656,7 @@
   }
   ```
 
-- 2.
+- p3-2.
   a. 읽기쓰기 가능한 "data2" file을 생성하고, 문자 ‘X'를 10개 씁니다.
   b. "data2" file의 첫 번째 위치로 file pointer를 옮긴 후 문자 ‘Y'를 하나 씁니다.		
   c. "data2" file의 가장 마지막 위치로 file pointer를 옮긴 후 문자 ‘Y'를 하나 씁니다.
@@ -732,9 +732,75 @@
 
 ## 20180912
 
-- ​
+- p3-3.c	
+  data1 배열의 0-4번째 정수를 “data3" 파일의 0, 2, 4, 6, 8번째 위치에 저장
+  data1 배열의 5-9번째 정수를 “data3" 파일의 1, 3, 5, 7, 9번째 위치에 저장
+  "data3" 파일에 저장된 정수 10개를 읽어 data2 배열에 저장
+
+  ```c
+  #include<stdio.h>
+  #include<sys/types.h>
+  #include<sys/stat.h>
+  #include<fcntl.h>
+  #include<unistd.h>
+
+  int main(){
+
+      int i, fd, k, k1, data1[10], data2[10];
+
+      fd=open("data3", O_RDWR|O_CREAT|O_TRUNC, 0600);
+
+      for (i=0;i<10;i++){
+          scanf("%d", &data1[i]);
+      }
+
+      for(i=0;i<5;i++){
+          write(fd, data1 + i, sizeof(int));
+          lseek(fd, 4, SEEK_CUR);
+      }
+
+      for(i=9;i>4;i--){
+          lseek(fd, -4, SEEK_CUR);
+          write(fd, data1 + i, sizeof(int));
+          lseek(fd, -8, SEEK_CUR);
+      }
+
+      read(fd, data2, 10 * sizeof(int));
+
+      for (i=0;i<10;i++) {
+          printf("%-5d", data1[i]);
+      }
+
+      printf("\n");
+
+      for (i=0;i<10;i++){
+          printf("%-5d", data2[i]);
+      }
+
+      printf("\n");
+
+      return 0;
+  }
+  ```
+
+  int는 4byte씩 데이터가 쓰여진다는 것을 주의할 것
+  처음 파일 포인터가 0부터 시작해서 int 데이터 하나를 쓰면, 포인터는 0123까지 데이터를 쓰고 그 다음 쓰여질 4에 포인터가 위치한다
+  array[0] 0 1 2 3		파일 위치
+  array[1] 4 5 6 7		파일 위치
+  array[2] 8 9 10 11		파일 위치
+  array[3] 11 12 13 14	파일 위치
+  array[4] 15 16 17 18	파일 위치
+  array[5] 19 20 21 22	파일 위치
+  array[6] 23 24 25 26	파일 위치
+  array[7] 27 28 29 30	파일 위치
+  array[8] 31 32 33 34	파일 위치
+  array[9] 35 36 37 38	파일 위치
 
 
-- 할 일
-  - P3-3.c 과제 마무리할 것
-  - P4.c 실습 예습해볼 것
+- p4-1
+- p4-2
+- p4-3
+- p4-4
+- p4-5
+- p4-6
+- p4-7
