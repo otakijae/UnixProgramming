@@ -355,9 +355,7 @@ write return 값
 
 - ​
 
-- P3-3.c 다시 확인
-
-- p4 실습 마무리하기
+- p4 과제 마무리 하기 ls 명령 수행
 
 - 6주차 첫 프로젝트 진행할 예정. 2시간 안에 해결하기. 프로젝트 시 노트북 사용 안 됨
 
@@ -365,4 +363,248 @@ write return 값
 
 - Directory 부분 정리 mkdir, rmdir, rename, getcwd, chdir, opendir, closedir, readdir
 
-- ​
+## 6주차 첫 프로젝트 진행할 예정. 2시간 안에 해결하기. 프로젝트 시 노트북 사용 안 됨
+
+- readlink
+  symbolic file안에 있는 내용을 보여줌
+
+  - 사용법
+
+    ```c
+    #include <unistd.h>
+    int readlink (const char *sympath, char *buffer, size_t buffsize);
+    ```
+
+    ```c
+    char ch[100] = {0};
+    readlink("test", ch, 99);
+    printf("%s\n", ch);
+    ```
+
+  ​	return : 성공하면 0 / 이름이 공간보다 크면 안 된다고 알려줌 -1 반환
+
+- lstat
+
+  - stat(test, ~)	: test 정보말고 test가 가리키고 있는 A/B/C/test에 대한 정보를 준다. Symbolic link의 파일에 대한 정보를 얻지 못함
+
+  - lstat(test, ~)	: symbolic link 자체 파일 정보를 받기 위해 사용
+
+  - 사용법
+
+    ```c
+    #include <sys/types.h>
+    #include<sys/stat.h>
+    int lstat (const char *linkname, struct stat *buf);
+    ```
+
+- directory 생성
+
+  - Directory file에 .와 ..를 넣어서 생성
+
+  - 사용법
+
+    ```C
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    int mkdir(const char *pathname, mode_t mode);
+    ```
+
+    ```c
+    mkdir("A", 0733);
+    ```
+
+  - directory에서의 permission은 조금 다름
+
+    - 읽기 4 : directory 내의 directory와 파일들을 볼 수 있다는 의미
+    - 쓰기 2 : directory와 file을 만들 수 있다
+    - 실행 1 : directory 안으로 들어갈 수 있다. 1이 없게 되면 들어가지 못하기 때문에 나머지 permission들이 의미가 없어지니까, 다른 permission을 허용하는 경우 같이 써줌
+
+- directory 제거
+
+  - directory가 비어있는 경우 제거 가능
+
+  - 사용법
+
+    ```c
+    #include <unistd.h>
+    int rmdir(const char *pathname);
+    ```
+
+- Rename
+
+  - 이름 바꾸기
+
+  - 사용법
+
+    ```c
+    #include <stdio.h>
+    int rename (const char *oldpathname, const char *newpathname);
+    ```
+
+  - newpathname이 존재해도 -1을 반환하지 않음
+    기존 file을 제거하고 새 이름 부여하기 때문
+
+  - file은 그렇지만, directory의 경우에는 하위에 directory와 file이 존재하는 경우에는 지워지지 않음
+
+- getcwd
+
+  - current working directory
+
+  - 사용법
+
+    ```c
+    #include <unistd.h>
+    char *getcwd(char *name, size_t size);
+    ```
+
+    ```c
+    ch[100] = {0};
+    getcwd(ch, 99);
+    printf("%s", ch);
+    ```
+
+  - return
+
+    - Current working directory의 경로 이름 반환
+
+  - size는 실제 길이 보다 +1이 커야 한다
+    마지막 NULL 문자 고려
+
+  - 성공 시 directory의 경로 이름이 name에 copy
+    실패 시 null pointer return;
+
+- chdir
+
+  - change directory
+
+  - 사용법
+
+    ```c
+    #include <unistd.h>
+    int chdir(const char *path);
+    ```
+
+    ```c
+    fd1=open(“/usr/ben/abc”, O_RDONLY);
+    fd2=open(“/usr/ben/xyz”, O_RDWR);
+
+    ==> 이걸 아래와 같이 변경 가능
+
+    chdir(“/usr/ben”);
+    fd1=open(“abc”, O_RDONLY);
+    fd2=open(“xyz”, O_RDWR);
+    ```
+
+    ```c
+    ch[100] = {0};
+
+    mkdir("T1", 0700);
+    chdir("T1");
+
+    mkdir("T2", 0700);
+    chdir("T2");
+
+    mkdir("T3", 0700);
+    chdir("T3");
+
+    getcwd(ch, 99);
+    printf("%s", ch);
+    ```
+
+    ```
+    [s13011022@bce LAB09-17]$ ./example.out
+    /home/account/class/tspark/s13011022/LAB09-17/T1/T2/T3
+    [s13011022@bce LAB09-17]$ 
+    ```
+
+    이렇게 결과가 출력이 되는데, 프로그램이 종료하면 원래 위치로 복귀하는 것을 볼 수 있다
+    LAB09-17에 있는 프로세스와 T3에 있는 프로세스가 다른 것임
+    쉘 프로세스에서 명령 하나하나가 실행될 때마다 child 프로세스를 만들어서 명령을 수행하기 때문에 쉘 프로세스와 child 프로세스가 다르게 실행되고 다른 역할을 함
+    child는 T3 위치에 가있지만, 쉘 프로세스는 원 위치에 그대로 있음
+    첫 프로젝트 때 주의해서 설계할 것
+
+- Directory 열기 및 닫기
+
+  - Directory 열기 사용법
+
+    ```c
+    #include <sys/types.h>
+    #include <dirent.h>
+    DIR *opendir(const char *dirname);
+    ```
+
+  - DIR형의 data structure에 대한 pointer를 return
+    실패 시 null pointer return
+
+  - Directory는 사실 파일이고, 내부에 목록 리스트로 데이터를 가지고 있음
+    그래서 파일이 가지고 있는 entry 정보를
+    운영체제가 entry 일부만 가져와서 가지고 있으면
+    P1은 포인터를 가지고 entry 값을 참조한다 ==> 약간 이해가 안 가지만 계속 찾아보다가 질문
+
+  - Directory 닫기 사용법
+
+    ```c
+    #include <dirent.h>
+    int closedir(DIR *dirptr);
+    ```
+
+- Directory 읽기
+
+  - 사용법
+
+    ```c
+    #include <sys/types.h>
+    #include <dirent.h>
+    struct dirent *readdir (DIR *dirptr);
+    ```
+
+  - return 값 : dirptr이 가리키는 DIR 구조내의 한 항
+
+  - struct dirent
+
+    - ino_t d_ino
+
+    - char d_name[]
+
+    - ```c
+      struct dirent{
+          ino_t d_ino;				//inode number
+          off_t d_off;				//offset to the next dirent
+          unsigned short d_reclen;	//length of this record
+          unsigned char d_type;		//type of file. not supported by all file system types
+          char d_name[256];			//filename
+      }
+      ```
+
+  - pointer dirptr은 read 후 다음 항을 가리킨다.
+
+  - directory의 끝에 도달하면 null pointer를 return
+
+  - 현재 디렉토리 파일과 dir정보 출력 실습 예제
+
+    ```c
+    int main(){
+            DIR *dp;
+            struct dirent *d;
+            dp = opendir(".");
+            d = readdir(dp);
+            while(d != NULL){
+                    printf("%ld : %s \n", d->d_ino, d->d_name);
+                    d = readdir(dp);
+            }
+
+            return 0;
+    }
+    ```
+
+- Directory file pointer 이동
+
+  - 사용법
+
+    ```c
+    #include <sys/types.h>
+    #include <dirent.h>
+    void rewinddir(DIR *dirptr);
+    ```
+
+    ​
