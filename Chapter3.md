@@ -48,14 +48,14 @@ write return 값
 - buf엔 파일 정보가 저장됨
 
   - st_dev, st_ino		identifier (논리적 장치번호와 inode 번호)
-  - st_mode 			permission mode
-  - st_nlink 			 	link의 수
-  - st_uid, st_gid			user의 uid와 gid
-  - st_rdev				file이 장치인 경우만 사용
-  - st_size				논리적 크기
-  - st_atime, st_mtime, st_ctime	file의 최근 access time,update time, stat 구조의 update time
-  - st_blksize			I/O block 크기
-  - st_blocks			파일에 할당된 block의 수
+  	 st_mode 			permission mode
+  	 st_nlink 			 	link의 수
+  	 st_uid, st_gid			user의 uid와 gid
+  	 st_rdev				file이 장치인 경우만 사용
+  	 st_size				논리적 크기
+  	 st_atime, st_mtime, st_ctime	file의 최근 access time,update time, stat 구조의 update time
+  	 st_blksize			I/O block 크기
+  	 st_blocks			파일에 할당된 block의 수
 
   ```c
   struct stat {
@@ -352,3 +352,17 @@ write return 값
     그리고 ls -l 명령으로 확인해보면 수정 시간이 test1, 2 , 3만 바뀌고 test_sym 파일 자체는 수정 시간이 변동이 안 돼있다
     test_sym 파일은 사실상 test1이라는 파일을 가리키고만 있고 내용은 가지고 있지 않는 것이다
     test_sym이라는 파일을 따로 만들어놓은 것이고, test1이라는 이름표 포인터를 갖고 있는 것임
+
+- ​
+
+- P3-3.c 다시 확인
+
+- p4 실습 마무리하기
+
+- 6주차 첫 프로젝트 진행할 예정. 2시간 안에 해결하기. 프로젝트 시 노트북 사용 안 됨
+
+- symlink
+
+- Directory 부분 정리 mkdir, rmdir, rename, getcwd, chdir, opendir, closedir, readdir
+
+- ​

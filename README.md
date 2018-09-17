@@ -783,6 +783,51 @@
   }
   ```
 
+  교수님 답안
+
+  ```C
+  int main(void){
+      
+      int i, fd, k, k1, data1[10], data2[10];
+
+      fd=open("data3", O_RDWR|O_CREAT|O_TRUNC, 0600);
+
+      for (i=0;i<10;i++){
+          scanf("%d", &data1[i]);
+      }
+
+      for(i=0;i<5;i++){
+          write(fd, data1 + i, sizeof(int));
+          lseek(fd, sizeof(int), SEEK_CUR);
+      }
+
+      lseek(fd, -9 * sizeof(int), SEEK_CUR);
+
+      for(i=5;i<10;i++){
+          write(fd, data1 + i, sizeof(int));
+          lseek(fd, sizeof(int), SEEK_CUR);
+      }
+
+      lseek(fd, 0, SEEK_SET);
+
+      read(fd, data2, 10 * sizeof(int));
+
+      for (i=0;i<10;i++) {
+          printf("%-5d", data1[i]);
+      }
+
+      printf("\n");
+
+      for (i=0;i<10;i++){
+          printf("%-5d", data2[i]);
+      }
+
+      printf("\n");
+
+      return 0;
+  }
+  ```
+
   int는 4byte씩 데이터가 쓰여진다는 것을 주의할 것
   처음 파일 포인터가 0부터 시작해서 int 데이터 하나를 쓰면, 포인터는 0123까지 데이터를 쓰고 그 다음 쓰여질 4에 포인터가 위치한다
   array[0] 0 1 2 3		파일 위치
@@ -798,9 +843,164 @@
 
 
 - p4-1
+  stat() 명령을 이용하여 "p1.c" 파일의 acess permission, link 수, 파일 크기를 출력하는 프로그램을 작성 하시오.
+
+  ```c
+  int main(){
+
+      struct stat buffer;
+      stat("data", &buffer);
+
+      printf("%o\n%d\n%ld\n", buffer.st_mode&0777, buffer.st_nlink, buffer.st_size);
+
+      return 0;
+  }
+  ```
+
+
 - p4-2
+  access() 명령을 이용하여 “data1"이라는 이름의 파일이 존재하는지, 존재 한다면 사용자에 의한 읽 기와 쓰기가 모두 가능한 파일인지를 알아보는 프로그램을 작성 하시오.
+
+  ```C
+  int main(){
+
+      struct stat buffer;
+
+      if(access("data1", F_OK) == 0){
+          if(access("data1", R_OK | W_OK) == 0){
+              printf("파일 존재, 읽기 쓰기 모두 가능\n");
+          } else{
+              printf("파일 존재, 읽기 쓰기 불가\n");
+          }
+      } else{
+          printf("파일 존재하지 않음\n");
+      }
+
+      return 0;
+  }
+  ```
+
 - p4-3
+  scanf()로 두 개의 문자열을 입력 받은 후, link() 명령을 사용하여 기존 file에 새로운 link를 만드는 프로그램을 작성 하시오. Shell 상에서 이 프로그램을 실행시켜, “p1.c" 파일에 ”abc"라는 이름의 새로 운 link를 생성 한 후, ls -l 명령을 이용하여 link를 확인 하시오.
+
+  ```C
+  int main(){
+
+      char name1[100], name2[100];
+      scanf("%100s %100s", name1, name2);
+      fflush(stdin);
+
+      link(name1, name2);
+
+      return 0;
+  }
+  ```
+
 - p4-4
+  scanf()로 두 개의 문자열을 입력 받은 후, symlink() 명령을 사용하여 기존 file에 symbolic link를 만드는 프로그램을 작성 하시오. Shell 상에서 이 프로그램을 실행시켜, “p1.c" 파일에 ”def"라는 이름 의 새로운 symbolic link를 생성 한 후, ls -l 명령을 이용하여 symbolic link를 확인 하시오. link와 symbolic link의 차이를 확인 해 봅니다.
+
+  ```C
+  int main(){
+
+      char name1[100], name2[100];
+      scanf("%100s %100s", name1, name2);
+      fflush(stdin);
+
+      symlink(name1, name2);
+
+      return 0;
+  }
+  ```
+
 - p4-5
+  Shell 상에서 디렉토리, A/B/C를 만듭니다. 4번의 프로그램을 이용해서 디렉토리 A/B/C에 대한 symbolic link T를 만듭니다. Shell 상에서 디렉토리 T에 data1 파일을 만듭니다. 디렉토리 A/B/C에도 data1이 생성 되었는지 확인 합니다.
+
+  ```C
+  합계 116
+  drwxr-xr-x. 3 s13011022 class 4096  9월 12 20:13 A
+  lrwxrwxrwx. 1 s13011022 class    5  9월 17 21:10 T -> A/B/C
+  -rwxr-xr-x. 1 s13011022 class 8632  9월 12 16:55 a.out
+  -rw-r--r--. 2 s13011022 class    0  9월 17 20:56 abc
+  -rw-r--r--. 1 s13011022 class    6  9월 12 16:55 data
+  -rw-r--r--. 1 s13011022 class    5  9월 17 20:47 data1
+  lrwxrwxrwx. 1 s13011022 class    4  9월 17 20:58 def -> p1.c
+  -rw-r--r--. 1 s13011022 class  306  9월 12 16:55 example.c
+  -rw-r--r--. 1 s13011022 class  244  9월 17 12:31 link.c
+  -rwxr-xr-x. 1 s13011022 class 8520  9월 17 12:31 link.out
+  -rw-r--r--. 2 s13011022 class    0  9월 17 20:56 p1.c
+  -rw-r--r--. 1 s13011022 class  303  9월 17 20:41 p4-1.c
+  -rwxr-xr-x. 1 s13011022 class 8632  9월 17 20:37 p4-1.out
+  -rw-r--r--. 1 s13011022 class  458  9월 17 20:49 p4-2.c
+  -rwxr-xr-x. 1 s13011022 class 8568  9월 17 20:48 p4-2.out
+  -rw-r--r--. 1 s13011022 class  283  9월 17 20:57 p4-3.c
+  -rwxr-xr-x. 1 s13011022 class 8664  9월 17 20:55 p4-3.out
+  -rw-r--r--. 1 s13011022 class  249  9월 17 21:10 p4-4.c
+  -rwxr-xr-x. 1 s13011022 class 8672  9월 17 21:10 p4-4.out
+  -rw-r--r--. 3 s13011022 class    7  9월 12 20:45 test1
+  -rw-r--r--. 3 s13011022 class    7  9월 12 20:45 test2
+  lrwxrwxrwx. 1 s13011022 class    5  9월 12 20:42 test_sym -> test1
+  ```
+
+  - ./p4-4.out 실행 후 ```A/B/C    T```  입력하고 ls -l 명령을 수행하면 위에처럼 출력됨
+  - 근데 보면 A/B/C는 디렉토리라 drwxrwx—이렇게 출력이 되는데, T는 lrwxrwx--- 이렇게 출력이 된다.
+    심볼릭 링크라는 의미임. 그래서 T는 디렉토리가 아니라 파일이라는 것을 알 수 있음
+  - 하지만! ```cd T``` 라는 명령이 수행이 된다. 그리고 T 내부에 vi data1을 만들고, A/B/C로 이동해서 보면 T에서 만든 data1이 똑같이 생성이 된 것을 볼 수 있다.
+  - 사실 data1이 똑같이 만들어진 것이 아니라, T는 A/B/C 디렉토리를 가리키는 symbolic link이기 때문에 A/B/C의 위치를 가리키고 있고, T에서 작업은 A/B/C에서의 작업인 것이다.
+
+  ### 주의! symbolic link가 가지는 이름표의 진실
+
+  - p1.c 파일 생성 후
+
+    ```C
+    link("p1.c", "p1_link.c")
+    ```
+
+    ```c
+    symlink("p1.c", "p1_symlink.c")
+    ```
+
+  - 이렇게 만들어놓으면 p1_symlink.c 파일은 p1.c를 가리키는 이름표를 가지게 된다.
+    그래서 p1_symlink.c 파일을 수정하면 p1.c를 수정하는 것과 같은 것이다
+
+  - 근데 p1_symlink.c가 가리키고 있는 p1.c의 이름을 변경하면 p1_symlink.c가 가리키는 파일에 문제가 생겼다고 ls -l 명령을 하면 알려준다
+
+  - symbolic link가 주소를 가지고 있는 포인터이면 이름이 변경이 되어도 상관이 없지만, 오로지 이름의 값만 가지고 있기 때문에 이름을 변경하면 문제가 생기는 것이다
+
+  - 이런 결과를 통해 주소를 가진 포인터가 저장이 되는 것이 아니라는 것을 알 수 있다. 오로지 이름표
+
 - p4-6
+  symbolic link 이름을 입력으로 받아, 해당 symbolic link 자체에 대한 stat 정보 중 access permission, 파일 크기를 symbolic link 이름과 같이 출력하고, 또한 symbolic link가 가리키는 실제 file 의 stat 정보 중 access permission, 파일 크기를 실제 file 이름과 같이 출력하는 프로그램을 작성 하 시오.
+
+  ```C
+  int main(){
+
+      struct stat symlink_buffer, original_buffer;
+
+      char symlink_file[100], ch[100] = {0}, original_file[100];
+
+      scanf("%100s", symlink_file);
+      fflush(stdin);
+
+      readlink(symlink_file, original_file, 99);
+
+      lstat(symlink_file, &symlink_buffer);
+      stat(original_file, &original_buffer);
+
+      printf("[symbolic file][%s] access permission : %o, file size : %ld\n", symlink_file, symlink_buffer.st_mode&0777, symlink_buffer.st_size);
+      printf("[original file][%s] access permission : %o, file size : %ld\n", original_file, original_buffer.st_mode&0777, original_buffer.st_size);
+
+      return 0;
+  }
+  ```
+
+  stat(test, ~)	: test 정보말고 test가 가리키고 있는 A/B/C/test에 대한 정보를 준다. Symbolic link의 파일에 대한 정보를 얻지 못함
+  lstat(test, ~)	: symbolic link 자체 파일 정보를 받기 위해 사용
+
 - p4-7
+  Shell에서 ls -l 명령에 의해 출력되는 정보를 보여주는 프로그램으로 작성 합니다. 자세한 정보를 알 고 싶은 파일 이름을 read 시스템 콜로 입력으로 받아, 해당 파일의 정보들 중, access permission, link 수, user id, group id, 파일 크기, 파일을 마지막으로 update 한 날짜, 그리고 파일 이름을 출력 합니다. 파일 관련 정보 중, access permission은 8진수로, user id와 group id는 정수로 출력 합니다. 날짜 및 시간과 관련된 정보를 문자열로 출력하고자 할 때는 ctime(&시간정보저장장소) 함수를 사용합 니다. ctime() 함수 사용 시 #include<time.h>가 필요합니다.
+
+  ```C
+
+  ```
+
+  ​
