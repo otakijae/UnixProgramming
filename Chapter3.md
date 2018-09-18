@@ -353,16 +353,6 @@ write return 값
     test_sym 파일은 사실상 test1이라는 파일을 가리키고만 있고 내용은 가지고 있지 않는 것이다
     test_sym이라는 파일을 따로 만들어놓은 것이고, test1이라는 이름표 포인터를 갖고 있는 것임
 
-- ​
-
-- p4 과제 마무리 하기 ls 명령 수행
-
-- 6주차 첫 프로젝트 진행할 예정. 2시간 안에 해결하기. 프로젝트 시 노트북 사용 안 됨
-
-- symlink
-
-- Directory 부분 정리 mkdir, rmdir, rename, getcwd, chdir, opendir, closedir, readdir
-
 ## 6주차 첫 프로젝트 진행할 예정. 2시간 안에 해결하기. 프로젝트 시 노트북 사용 안 됨
 
 - readlink

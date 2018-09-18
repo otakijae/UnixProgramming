@@ -1000,7 +1000,44 @@
   Shell에서 ls -l 명령에 의해 출력되는 정보를 보여주는 프로그램으로 작성 합니다. 자세한 정보를 알 고 싶은 파일 이름을 read 시스템 콜로 입력으로 받아, 해당 파일의 정보들 중, access permission, link 수, user id, group id, 파일 크기, 파일을 마지막으로 update 한 날짜, 그리고 파일 이름을 출력 합니다. 파일 관련 정보 중, access permission은 8진수로, user id와 group id는 정수로 출력 합니다. 날짜 및 시간과 관련된 정보를 문자열로 출력하고자 할 때는 ctime(&시간정보저장장소) 함수를 사용합 니다. ctime() 함수 사용 시 #include<time.h>가 필요합니다.
 
   ```C
+  #include<stdio.h>
+  #include<sys/types.h>
+  #include<sys/stat.h>
+  #include<fcntl.h>
+  #include<unistd.h>
+  #include<time.h>
 
+  int main(){
+
+      struct stat buffer;
+      char file[100], dir[100];
+
+      int n = read(0, file, 100);
+
+      file[n-1] = '\0';
+
+      if(stat(file, &buffer) < 0){
+          perror("stat");
+          return -1;
+      }
+
+      if(readlink(file, dir, 100) >= 0){
+          lstat(file, &buffer);
+      }
+
+      printf("Permission : %o\n", buffer.st_mode&0777);
+      printf("Links : %d\n", buffer.st_nlink);
+      printf("User id : %d\n", buffer.st_uid);
+      printf("Group id : %d\n", buffer.st_gid);
+      printf("Size : %ld\n", buffer.st_size);
+      printf("Update time : %s", ctime(&buffer.st_mtime));
+      printf("Name : %s\n", file);
+
+      printf("The file %s a symbolic link\n", (S_ISLNK(buffer.st_mode)) ? "is" : "is not");
+  }
   ```
 
-  ​
+  - 일단 read(0, file, 100); 표준 입력 받을 시, \n 뉴라인도 입력 받아오는 것 주의할 것
+    그래서 \n 뉴라인을 null문자로 변경했음
+  - 파일 존재 여부를 if(stat(file, &buffer) < 0)으로 판별했음
+  - Link / symlink 여부를 if(readlink(file, dir, 100) >= 0)로 맞으면 symlink로 판별했음
