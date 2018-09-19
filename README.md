@@ -1007,33 +1007,42 @@
   #include<unistd.h>
   #include<time.h>
 
+  #define BUFSIZE 512
+
   int main(){
 
       struct stat buffer;
-      char file[100], dir[100];
+      char file[BUFSIZE], dir[BUFSIZE], time[BUFSIZE];
 
-      int n = read(0, file, 100);
+      int n = read(0, file, BUFSIZE);
 
       file[n-1] = '\0';
 
+      // file 존재 여부 파악
       if(stat(file, &buffer) < 0){
           perror("stat");
           return -1;
       }
 
-      if(readlink(file, dir, 100) >= 0){
+      // symlink 파일 여부 파악
+      if(readlink(file, dir, BUFSIZE) >= 0){
           lstat(file, &buffer);
       }
 
-      printf("Permission : %o\n", buffer.st_mode&0777);
-      printf("Links : %d\n", buffer.st_nlink);
-      printf("User id : %d\n", buffer.st_uid);
-      printf("Group id : %d\n", buffer.st_gid);
-      printf("Size : %ld\n", buffer.st_size);
-      printf("Update time : %s", ctime(&buffer.st_mtime));
-      printf("Name : %s\n", file);
+      strcpy(time, ctime(&buffer.st_mtime));
+      n = strlen(time);
+      time[n-1] = '\0';
 
-      printf("The file %s a symbolic link\n", (S_ISLNK(buffer.st_mode)) ? "is" : "is not");
+      printf("%o ", buffer.st_mode&0777);
+      printf("%d ", buffer.st_nlink);
+      printf("%d ", buffer.st_uid);
+      printf("%d ", buffer.st_gid);
+      printf("%ld ", buffer.st_size);
+      printf("%s ", time);
+      printf("%s ", file);
+      printf("%s\n", (S_ISLNK(buffer.st_mode)) ? "symbolic link" : "");
+
+      return 0;
   }
   ```
 
@@ -1041,3 +1050,136 @@
     그래서 \n 뉴라인을 null문자로 변경했음
   - 파일 존재 여부를 if(stat(file, &buffer) < 0)으로 판별했음
   - Link / symlink 여부를 if(readlink(file, dir, 100) >= 0)로 맞으면 symlink로 판별했음
+  - 교수님 답안
+    read(0, file, 100) 사용 시 맨 마지막 엔터 입력도 \n 으로 입력받으니까 \0 null문자로 변경해야한다고 말씀하심
+    수정 시간 읽어와서 ctime함수로 문자열로 시간을 변경하는데 맨 마지막에 \n이 들어가있어서 이것도 변경하라고 말씀하심
+    파일 존재 여부 및 link/symlink 여부는 신경쓰지 않았음
+
+## 20180919
+
+- p5-1.
+  아래 프로그램은 shell에서 사용하는 cd 명령과 ls 명령의 사용이 가능한 프로그램이다. change_directory() 함수와 list() 함수의 코드를 완성 하시오. 또한, 명령 입력 대기 시 현재 directory 이름이 출력 되도록 하는 코드를 작성 하시오.
+
+  ```c
+  #define BUFSIZE 512
+
+  void change_directory(char *name){
+      chdir(name);
+  }
+
+  void list(){
+      DIR *dp;
+      struct dirent *d;
+      dp = opendir(".");
+      while((d = readdir(dp)) != NULL){
+          if(d->d_name[0] != '.'){
+              printf("%ld : %s \n", d->d_ino, d->d_name);
+          }
+      }
+  }
+
+  int main(){
+
+      char name[BUFSIZE];
+
+      while(1) {
+          getcwd(name, BUFSIZE);
+          printf("[ %s ]$ ", name);
+
+          scanf("%s", name);
+          if (strcmp(name, "cd") == 0) {
+              scanf("%s", name);
+              change_directory(name);
+          }
+          else if (strcmp(name, "ls") == 0)
+              list();
+          else
+              break;
+      }
+      return 0;
+  }
+  ```
+
+- p5-2.
+  Current working directory 내에 있는 모든 파일과 서브디렉토리에 대해 ls -l 명령을 수행하는 프로 그램을 작성 합니다. 모든 파일과 서브디렉토리 관련 정보 중, access permission, link 수, user id, group id, 파일 및 서브디렉토리의 크기, 파일 및 서브디렉토리를 마지막으로 update 한 날짜, 그리고 파일 및 서브디렉토리의 이름을 출력 합니다. 관련 정보 중, access permission은 8진수로, user id와 group id는 정수로 출력 합니다. 파일은 ‘F'로 서브디렉토리는 ’D'로 구분하고 정보를 출력합니다.
+
+  ```c
+  #define BUFSIZE 512
+
+  int main(){
+
+      struct stat buffer;
+      char file[BUFSIZE], time[BUFSIZE];
+      int n;
+
+      DIR *dp;
+      struct dirent *d;
+      dp = opendir(".");
+      while((d = readdir(dp)) != NULL){
+
+          if(d->d_name[0] != '.'){
+
+              stat(d->d_name, &buffer);
+
+              if(S_ISREG(buffer.st_mode)){
+                  printf("F");
+              } else{
+                  printf("D");
+              }
+
+              strcpy(time, ctime(&buffer.st_mtime));
+              n = strlen(time);
+              time[n-1] = '\0';
+
+              printf("%o ", buffer.st_mode&0777);
+              printf("%d ", buffer.st_nlink);
+              printf("%d ", buffer.st_uid);
+              printf("%d ", buffer.st_gid);
+              printf("%ld ", buffer.st_size);
+              printf("%s ", time);
+              printf("%s ", d->d_name);
+              printf("%s\n", (S_ISLNK(buffer.st_mode)) ? "symbolic link" : "");
+          }
+      }
+      return 0;
+  }
+  ```
+
+  ```
+  F644 1 5102 5000 1092 Wed Sep 19 20:04:34 2018 p5-2.c 
+  F755 1 5102 5000 8904 Wed Sep 19 19:28:30 2018 p5-1.out 
+  F755 1 5102 5000 8592 Wed Sep 19 13:02:23 2018 p5-3.out 
+  F644 1 5102 5000 808 Wed Sep 19 19:28:22 2018 p5-1.c 
+  F755 1 5102 5000 8624 Mon Sep 17 23:10:49 2018 example.out 
+  F644 1 5102 5000 510 Wed Sep 19 13:06:33 2018 p5-3.c 
+  F755 1 5102 5000 8992 Wed Sep 19 20:04:44 2018 p5-2.out 
+  D700 3 5102 5000 4096 Mon Sep 17 22:41:06 2018 T1 
+  F644 1 5102 5000 512 Mon Sep 17 23:19:25 2018 example.c 
+  ```
+
+- p5-3.
+  Current working directory와 그의 descendent directory들 안에 저장된 모든 파일과 서브디렉토리들 에 대해, 디렉토리와 실행 파일들만 선택하여 그 이름과 크기를 출력하는 프로그램을 작성 하시오.
+  힌트) S_IXUSR & status->st_mode || S_IXGRP & status->st_mode || S_IXOTH & status->st_mode
+
+  ```c
+  int list(const char *name, const struct stat *status, int type) {
+
+      if(type == FTW_D || type == FTW_DNR){
+          printf("%s : %d\n", name, status->st_size);
+      }
+      else if(type == FTW_F){
+          if(S_IXUSR & status->st_mode || S_IXGRP & status->st_mode || S_IXOTH & status->st_mode){
+              printf("%s : %d\n", name, status->st_size);
+          }
+      }
+
+      return 0;
+  }
+
+  int main(){
+      ftw(".", list, 1);
+      return 0;
+  }
+  ```
+
+  ​
