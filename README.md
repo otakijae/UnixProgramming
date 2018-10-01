@@ -1182,4 +1182,102 @@
   }
   ```
 
-  ​
+
+## 20181001
+
+- p6-1.c
+  실행 중인 프로그램의 프로세스 id, 프로세스 그룹 id, session id를 출력하는 코드를 작성 하시오.
+
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+
+  int main(){
+          pid_t pid;
+          pid = fork();
+
+          if(pid == 0){
+                  printf("%ld : %ld : %ld \n", getpid(), getpgrp(), getsid(getpid()));
+          }
+
+          return 0;
+  }
+  ```
+
+- p6-2.c
+  main() 함수의 인수로 문자열 3개를 입력 받아, 출력하는 프로그램을 작성 하시오.
+
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+
+  int main(int argc, char **argv){
+
+          int i = 0;
+          printf("%d\n", argc);
+          
+          while(argv[i] != NULL){
+                  printf("%s\n", argv[i]);
+                  i++;
+          }
+          return 0;
+  }
+  ```
+
+- P6-3.c
+  main() 함수의 인수로 정수를 하나 받아, 해당 정수 만큼의 child 프로세스를 생성하는 프로그램을 작성 하시오. 생성된 child 프로세스는 자신의 프로세스 id, 프로세스 그룹 id, session id를 출력 한 후 종료 합니다.
+
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+
+  int main(int argc, char **argv){
+          int i, num;
+          pid_t pid;
+
+          num = atoi(argv[1]);
+
+          for(i=0;i<num;i++){
+                  pid = fork();
+                  if(pid == 0){
+                          printf("%ld : %ld : %ld\n", getpid(), getpgrp(), getsid(getpid()));
+                          exit(0);
+                  }
+          }
+
+          for(i=0;i<num;i++){
+                  if(pid > 0){
+                          wait(0);
+                  }
+          }
+          return 0;
+  }
+  ```
+
+- p6-4.c
+  main() 함수의 인수로 파일 이름과 정수 하나를 입력으로 받아, 먼저 입력받은 이름의 파일을 open 한 후, 해당 정수 만큼의 child 프로세스를 생성하는 프로그램을 작성 하시오. 생성된 child 프로세스는 open 된 파일에서 2개의 문자를 읽어 자신의 id와 함께 출력 한 후 종료 합니다. (표준 출력은 printf() 를 사용 합니다.)
+
+  ```c
+
+  ```
