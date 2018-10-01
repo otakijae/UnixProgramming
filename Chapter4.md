@@ -1,10 +1,5 @@
 # Chapter4. 시스템 정보
 
-- 할일
-
-  - Dir tree 정리
-  - Header file 정리
-
 - uid 검색
   uid : 만든 사람의 id
   euid : 지금 실행중인 사람의 id
