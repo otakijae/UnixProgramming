@@ -1279,5 +1279,47 @@
   main() 함수의 인수로 파일 이름과 정수 하나를 입력으로 받아, 먼저 입력받은 이름의 파일을 open 한 후, 해당 정수 만큼의 child 프로세스를 생성하는 프로그램을 작성 하시오. 생성된 child 프로세스는 open 된 파일에서 2개의 문자를 읽어 자신의 id와 함께 출력 한 후 종료 합니다. (표준 출력은 printf() 를 사용 합니다.)
 
   ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <ftw.h>
+  #include <stdlib.h>
 
+  #define BUFSIZE 512
+
+  int main(int argc, char **argv){
+
+          int i, num, fd;
+          char buffer[BUFSIZE] = {0};
+          pid_t pid;
+
+          fd = open(argv[1], O_RDONLY);
+          num = atoi(argv[2]);
+
+          for(i=0;i<num;i++){
+                  pid = fork();
+                  if(pid == 0){
+                          read(fd, buffer, 2*sizeof(char));
+                          printf("%s by %ld\n", buffer, getpid());
+                          exit(0);
+                  }
+          }
+
+          for(i=0;i<num;i++){
+                  if(pid > 0){
+                          wait(0);
+                  }
+          }
+
+          return 0;
+  }
   ```
+
+  buffer[BUFSIZE]를 초기화를 안 해주면, 데이터 읽어와서 쓰면 쓰레기 값이 나옴
+  buffer 배열을 초기화하고 안 하고 차이를 알아봐야할 것
+
+- ​
