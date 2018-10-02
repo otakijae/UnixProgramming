@@ -16,7 +16,7 @@
     아래 그림 실행하면, one two two가 출력이 된다.
     parent와 child가 하는 일을 따로 지정을 안 해줘서 같은 일을 반복적으로 수행한 것임.
 
-    ![](/Users/jaehyukshin/Desktop/스크린샷 2018-10-01 오후 6.53.49.png)
+    ![child생성 후 작업](https://t1.daumcdn.net/cfile/tistory/998909345BB310F30F)
 
   - Parent / child 구분
 
