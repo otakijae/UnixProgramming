@@ -262,4 +262,153 @@
   }
   ```
 
-  ​
+- wait 시스템 호출
+
+  ```c
+  #include <sys/wait.h>
+  #include <sys/types.h>
+
+  pid_t wait(int *status);
+  ```
+
+  - 하나 이상의 child process 수행 시 아무나 하나가 종료되면 return 된다
+  - return 값
+    종료된 child의 id
+    살아있는 child process가 없는 경우 -1
+  - Status : child의 종료 상태가 전달
+
+- wait(0); 를 하고 안 하고 차이
+  child를 생성한만큼 wait를 실행해줘야한다. 안 하게 되면, parent를 종료를 했기때문에 child가 종료하는 걸 안 기다림
+  wait를 하면 os로 인해 block이 된다
+  child 중 하나 실행종료되는대로 parent 다시 깨어난다
+  child 종료되면 return 된 id를 출력하면 어떤 순서로 종료했는지 알 수 있음
+
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+
+  void do_child(void){
+          int i;
+
+          for(i=0;i<5;i++){
+                  printf("child %ld running ... \n", getpid());
+                  sleep(1);
+          }
+          exit(0);
+  }
+
+  int main(int argc, char **argv){
+
+          int i, status, N = 3;
+          pid_t pid;
+
+          for(i=0;i<N;i++){
+                  pid = fork();
+                  if(pid == 0){
+                          do_child();
+                  }
+          }
+      	/* wait를 적어줘야 
+          for(i=0;i<N;i++){
+          	wait(0);
+          }
+          */
+          return 0;
+  }
+  ```
+
+  실행결과
+
+  ```
+  [s13011022@bce LAB10-08]$ ./example.out
+  child 37172 running ... 
+  child 37174 running ... 
+  child 37173 running ... 
+  [s13011022@bce LAB10-08]$ child 37172 running ... 
+  child 37174 running ... 
+  child 37173 running ... 
+  child 37172 running ... 
+  child 37174 running ... 
+  child 37173 running ... 
+  child 37172 running ... 
+  child 37174 running ... 
+  child 37173 running ... 
+  child 37172 running ... 
+  child 37174 running ... 
+  child 37173 running ... 
+  ```
+
+- WIFEXITED(status) : status의 하위 8bit가 0인지 검사. 정상종료인지 검사. 1 return하면 정상종료이고, 정상 종료가 안 됐으면 exit 자체가 실행이 안 된 것이기 때문에 값을 알 수 없음
+
+- WEXITSTATUS(status) : status의 상위 비트에 저장된 값을 return. Exit status 반환
+
+- waitpid 시스템 호출
+  그냥 wait 시스템 호출을 사용하면, 종료한 순서대로 확인을 하기 때문에 원하는 순서대로 종료를 하고 싶으면 waitpid 시스템 호출 사용
+
+  ```c
+  #include <sys/types.h>
+  #include <sys/wait.h>
+
+  pid_t waitpid(pid_t pid, int *status, int options);
+  ```
+
+  - pid : 기다리고 싶은 child의 id
+  - status : child의 종료 상태
+  - options  WNOHANG; (with no hang option)
+    child가 종료하지 않았으면 0을 return
+    child 종료했으면 종료한 child id return
+    이 옵션으로 중간중간에 child 종료했는지 아닌지 확인해주면 된다
+
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+
+  int main(int argc, char **argv){
+
+          pid_t pid;
+          int status, exit_status;
+
+          if((pid=fork()) < 0){
+                  perror("fork failed");
+                  exit(1);
+          }
+
+          if(pid == 0){
+                  sleep(4);
+                  exit(5);
+          }
+
+          if((pid = wait(&status)) == -1){
+                  perror("wait failed");
+                  exit(2);
+          }
+
+          if(WIFEXITED(status)){
+                  exit_status = WEXITSTATUS(status);
+                  printf("Exit status from %d was %d\n", pid, exit_status);
+          }
+  		exit(0);
+  }
+  ```
+
+- 좀비 상태와 너무 이른 퇴장
+
+  - 부모 프로세스가 wait를 수행하지 않고 있는 상태에서 자식이 퇴장할 때 -> child는 좀비상태가 된다
+    - parent가 wait를 안 한 경우 : child 생성후 다른 작업을 하다가 wait를 한 경우가 있고, 아니면 아예 wait를 안 해준 경우가 있다
+  - 하나 이상의 자식 프로세스가 수행되고 있는 상태에서 부모가 퇴장할 때 -> child는 init(pid = 1)의 child로 된다
