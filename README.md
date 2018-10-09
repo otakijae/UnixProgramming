@@ -1322,4 +1322,192 @@
   buffer[BUFSIZE]를 초기화를 안 해주면, 데이터 읽어와서 쓰면 쓰레기 값이 나옴
   buffer 배열을 초기화하고 안 하고 차이를 알아봐야할 것
 
-- ​
+- p7-1a.c
+  main() 함수의 argument로 받은 문자열을 3회 반복 출력하는 프로그램을 작성하고 해당 프로그램 의 실행 파일 이름을 "test1"으로 설정 합니다. 동일한 실행 파일을 home directory/bin에 복사하고 파 일 이름은 "test2"로 설정 합니다.
+
+  ```c
+  int main(int argc, char **argv){
+
+          int i,j;
+
+          for(i=0;i<3;i++){
+                  for(j=1;argv[j]!=NULL;j++){
+                          printf("%s ", argv[j]);
+                  }
+                  printf("\n");
+          }
+          return 0;
+  }
+  ```
+
+  - p7-1b.c
+    execl() 명령을 이용하여 current working directory에 있는 "test1"을 실행 시키는 프로그램을 작성 하고, 3개의 문자열, ”abc", "def", "ghi"를 argument로 전달합니다.
+
+    ```c
+    int main(int argc, char **argv){
+            execl("./test1", "test1", "abc", "def","ghi", (char*)0);
+            exit(1);
+            return 0;
+    }
+    ```
+
+
+  - p7-1c.c
+    execlp() 명령을 이용하여 home directory/bin에 있는 "test2"를 실행 시키는 프로그램을 작성 하고, 3개의 문자열, ”abc", "def", "ghi"를 argument로 전달합니다.
+
+    ```c
+    int main(int argc, char **argv){
+            execlp("test2", "test2", "abc", "def", "ghi", (char*)0);
+            exit(1);
+            return 0;
+    }
+    ```
+
+
+  - p7-1d.c
+    execv() 명령을 이용하여 current working directory에 있는 "test1"을 실행 시키는 프로그램을 작성 하고, 3개의 문자열, ”abc", "def", "ghi"를 argument로 전달합니다.
+
+    ```c
+    int main(int argc, char **argv){
+            char *av[5] = {"test1", "abc", "def", "ghi", (char*)0};
+            execv("./test1", av);
+            exit(1);
+    }
+    ```
+
+
+  - p7-1e.c
+    execvp() 명령을 이용하여 home directory/bin에 있는 "test2"를 실행 시키는 프로그램을 작성 하 고, 3개의 문자열, ”abc", "def", "ghi"를 argument로 전달합니다.
+
+    ```c
+    int main(int argc, char **argv){
+            char *av[5] = {"test2", "abc", "def", "ghi", (char*)0};
+            execvp("test2", av);
+            exit(1);
+    }
+    ```
+
+- p7-2.c
+  parent process는 3개의 child process를 만들고, 각 child process가 종료 할 때까지 대기하였다가 child process의 exit() 값을 출력 한 후 종료 합니다. 각 child process는 순서대로 아래 3가지 프로그 램 중 하나를 실행 시킨 후 exit()을 수행 합니다. exit()의 값은 child process가 만들어진 순서 번호입니다.
+
+  ```c
+  int main(int argc, char **argv){
+
+          int i, status;
+          pid_t pid;
+
+          for(i=0;i<3;i++){
+                  pid = fork();
+                  if(pid == 0 && i == 0){
+                          execl("./p7-2a.out", "p7-2a.out", "1", "abcdef", (char*)0);
+                  }
+                  else if(pid == 0 && i == 1){
+                          execl("./p7-2b.out", "p7-2b.out", "2", (char*)0);
+                  }
+                  else if(pid == 0){
+                           execl("./p7-2c.out", "p7-2c.out", "3", (char*)0);
+                  }
+          }
+          for(i=0;i<3;i++){
+                  wait(&status);
+                  if(WIFEXITED(status))
+                          printf("......%d\n", WEXITSTATUS(status));
+          }
+          exit(0);
+  }
+  ```
+
+  - p7-2a.c
+    main() 함수의 인수로 받은 문자열을 5회 출력하는 프로그램입니다. 매 회 출력 후 sleep(1) 명령으 로 1초간 쉽니다.
+
+    ```c
+    int main(int argc, char **argv){
+
+            int i,j;
+
+            for(i=0;i<5;i++){
+                    for(j=1;argv[j]!=NULL;j++){
+                            printf("%s ", argv[j]);
+                    }
+                    printf("\n");
+                    sleep(1);
+            }
+            exit(1);
+    }
+    ```
+
+  - p7-2b.c
+    프로세스 id와 group id, session id를 5회 출력하는 프로그램입니다. 매 회 출력 후 sleep(1) 명령 으로 1초간 쉽니다.
+
+    ```c
+    int main(int argc, char **argv){
+
+            int i;
+
+            for(i=0;i<5;i++){
+                    printf("pid = %d gid = %d sid = %d\n", getpid(), getpgid(0), getsid(getpid()));
+                    sleep(1);
+            }
+            exit(2);
+    }
+    ```
+
+  - p7-2c.c
+    ‘A'부터 ’Z'까지 26개의 알파벳이 쓰여진 “data" 파일에서 한 글자씩 읽어 10회 출력하는 프로그램 입니다. 매 회 출력 후 sleep(1) 명령으로 1초간 쉽니다.
+
+    ```c
+    int main(int argc, char **argv){
+
+            char buffer[BUFSIZE];
+            int fd,i;
+
+            fd = open("data", O_RDONLY);
+
+            for(i=0;i<10;i++){
+                    read(fd, buffer, 1);
+                    write(1, buffer, 1);
+                    write(1, "\n", 1);
+                    sleep(1);
+            }
+            exit(3);
+    }
+    ```
+
+- p7-3.c
+  2번 프로그램에서 parent process가 child process의 생성 순서의 역순으로 종료 대기를 하도록 수정하시오.
+
+  ```c
+  int main(int argc, char **argv){
+
+          int i, status;
+          pid_t pid;
+
+          for(i=0;i<3;i++){
+                  pid = fork();
+                  if(pid == 0 && i == 0){
+                          execl("./p7-2a.out", "p7-2a.out", "1", "abcdef", (char*)0);
+                  }
+                  else if(pid == 0 && i == 1){
+                          execl("./p7-2b.out", "p7-2b.out", "2", (char*)0);
+                  }
+                  else if(pid == 0){
+                          execl("./p7-2c.out", "p7-2c.out", "3", (char*)0);
+                  }
+          }
+
+
+          while(waitpid(pid, &status, WNOHANG) == 0){
+                  printf("parent still waiting\n");
+                  sleep(1);
+          }
+
+          if(WIFEXITED(status))
+                  printf("......%d\n", WEXITSTATUS(status));
+
+          exit(0);
+  }
+  ```
+
+  이문제 일단 보류
+
+- ㅁㄴㅇㄹ
