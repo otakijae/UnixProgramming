@@ -54,6 +54,8 @@ int main(int argc, char **argv){
         printf("> ");
         gets(in);
         i = 0;
+
+        //입력된 문자열을 단어로 나눠서 res[] 배열에 저장
         res[i] = strtok(in, " ");
         if(strcmp(res[0], "exit")==0)
             exit(0);
@@ -71,3 +73,18 @@ int main(int argc, char **argv){
     }
 }
 
+/*
+//strtok함수는 방금전에 분리한 문자열의 분리지점 바로 다음 주소값을 기억하고 있다.
+//첫 번째 인자로 문자열의 주소값이 들어오면 거기서부터 분리를 시도,
+//만약 NULL이 들어오면 이전에 자기가 기억한 곳으로부터 분리를 시도한다.
+
+int main(int argc, char **argv){
+  char s1[30] = "The Little Prince";
+  char *ptr = strtok(s1, " ");
+  while(ptr != NULL){
+    printf("%s\n", ptr);
+    ptr = strtok(NULL, " ");
+  }
+  return 0;
+}
+*/
