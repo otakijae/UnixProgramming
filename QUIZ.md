@@ -468,3 +468,118 @@ int main(int argc, char **argv){
 
 - 다음
 
+  - backup함수 미완성
+
+    ```c
+    #include <stdio.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/wait.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <dirent.h>
+    #include <string.h>
+    #include <time.h>
+    #include <ftw.h>
+    #include <stdlib.h>
+    
+    #define BUFSIZE 512
+    
+    void cp_m(char **s){
+        char buffer[BUFSIZE];
+        int fd1, fd2, nread;
+    
+        fd1 = open(s[1], O_RDONLY);
+    
+        if (fd1 == -1) {
+            return;
+        } else {
+            fd2 = open(s[2], O_WRONLY | O_CREAT | O_EXCL, 0777);
+    
+            if(fd2 == -1){
+                fd2 = open(s[2], O_WRONLY | O_CREAT | O_TRUNC, 0777);
+            }
+    
+            nread = read(fd1, buffer, BUFSIZE);
+            while(nread > 0){
+                write(fd2, buffer, nread);
+                nread = read(fd1, buffer, BUFSIZE);
+            }
+        }
+    
+        close(fd1);
+        close(fd2);
+    }
+    
+    int list(const char *name, const struct stat *status, int type) {
+    
+        struct stat buffer;
+        char *arguments[] = {};
+        arguments[0] = "cp";
+    
+    //되는데 복붙이 완벽하게 안 됨, 디렉토리도 복사 되고 그런다
+    //    if(type == FTW_D){
+    //        DIR *dp;
+    //        struct dirent *d;
+    //        dp = opendir(name);
+    //        while((d = readdir(dp)) != NULL){
+    //            if(d->d_name[0] != '.'){
+    //                stat(d->d_name, &buffer);
+    //                if(!S_ISDIR(buffer.st_mode)){
+    //                    printf("[%s] : %s\n", name, d->d_name);
+    //
+    //                    char buff[BUFSIZE];
+    //                    buff[0] = '\0';
+    //                    strcat(buff, (char*)name);
+    //                    strcat(buff, "/");
+    //                    strcat(buff, d->d_name);
+    //                    arguments[1] = buff;
+    //
+    //                    char buff2[BUFSIZE];
+    //                    buff2[0] = '\0';
+    //                    strcat(buff2, "./TEMP/");
+    //                    strcat(buff2, d->d_name);
+    //                    arguments[2] = buff2;
+    //
+    //                    cp_m(arguments);
+    //                }
+    //            }
+    //        }
+    //    }
+    
+    //시도 중
+    //    if(type == FTW_F){
+    //        char *arguments[] = {};
+    //        arguments[0] = "cp";
+    //        char buff[BUFSIZE];
+    //        buff[0] = '\0';
+    //        strcat(buff, (char*)name);
+    //        arguments[1] = buff;
+    //
+    //        printf("%s\n", arguments[1]);
+    //    }
+        return 0;
+    }
+    
+    int main(int argc, char **argv){
+    
+        //예시 스트링으로 해보기
+        //일단 파일이름으로만 복사 붙이기 성공시키고
+        //이후에 경로 이름도 추가해서 복사 붙이기 성공시키기
+        //간단한 방법으로
+    
+        mkdir("TEMP", 0777);
+        ftw(".", list, 1);
+    
+        return 0;
+    }
+    ```
+
+  - //예시 스트링으로 해보기
+    //일단 파일이름으로만 복사 붙이기 성공시키고
+    //이후에 경로 이름도 추가해서 복사 붙이기 성공시키기
+    //간단한 방법으로
+
+  - 시험범위 2-6장, 설계과제 1, 2-1, 2-2 backup 코딩까지
+    월요일 필기, 수요일 실기
+
