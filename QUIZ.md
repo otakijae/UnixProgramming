@@ -466,120 +466,215 @@ int main(int argc, char **argv){
       그러나 exec 함수가 실행에 실패하면 실행하려고 하는 프로세스가 메모리에 로딩이 안 되어 exec 함수 다음 코드들이 실행된다
       exec함수를 호출하고 원래의 프로세스가 사라져 버리는 걸 원치 않으니 fork를 한 후에 exec함수를 호출하면 된다
 
-- 다음
+- 교수님 피드백 이후
+  exec 함수군이 제대로 실행되지 않은 경우를 고려하여, 모든 경우에 exit(0)을 해주는게 안전하다고 함
 
-  - backup함수 미완성
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  
+  #define BUFSIZE 512
+  
+  void cat_m(char **s){
+  	char buffer[BUFSIZE];
+      	int fd, nread;
+  
+      	fd = open(s[1], O_RDONLY);
+  
+      	nread = read(fd, buffer, BUFSIZE);
+      	while(nread > 0){
+      		write(1, buffer, nread);
+          	nread = read(fd, buffer, BUFSIZE);
+      	}
+  	
+  	close(fd);
+  }
+  
+  void cd_m(char **s){
+  	chdir(s[1]);
+  }
+  
+  void cp_m(char **s){
+      char buffer[BUFSIZE];
+      int fd1, fd2, nread;
+  
+      fd1 = open(s[1], O_RDONLY);
+  
+      if (fd1 == -1) {
+          return;
+      } else {
+          fd2 = open(s[2], O_WRONLY | O_CREAT | O_EXCL, 0777);
+  
+          if(fd2 == -1){
+              fd2 = open(s[2], O_WRONLY | O_CREAT | O_TRUNC, 0777);
+          }
+  
+          nread = read(fd1, buffer, BUFSIZE);
+          while(nread > 0){
+              write(fd2, buffer, nread);
+              nread = read(fd1, buffer, BUFSIZE);
+          }
+      }
+  
+      close(fd1);
+      close(fd2);
+  }
+  
+  void mkdir_m(char **s){
+  	mkdir(s[1], 0777);
+  }
+  
+  void ls_m(char **s){
+  	DIR *dp;
+      	struct dirent *d;
+      	dp = opendir(".");
+      	while((d = readdir(dp)) != NULL){
+          	if(d->d_name[0] != '.'){
+              		printf("%s\n", d->d_name);
+          	}
+      	}
+  }
+  
+  void vi_m(char **s){
+  	char buffer[BUFSIZE];
+      	int fd1, nread;
+  	
+      	fd1 = open(s[1], O_RDONLY);
+  	
+      	if (fd1 == -1) {
+  		fd1 = open(s[1], O_WRONLY | O_CREAT, 0777);
+  		while(1) {
+  			int n = read(0, buffer, BUFSIZE);
+  			if (strncmp(buffer, "quit", 4) == 0) {
+          			return;
+  			}
+  			write(fd1, buffer, n);
+      		}
+      	} else {
+  		fd1 = open(s[1], O_RDWR);
+  
+  	        nread = read(fd1, buffer, BUFSIZE);
+          	while(nread > 0){
+                  	write(1, buffer, nread);
+                  	nread = read(fd1, buffer, BUFSIZE);
+          	}
+  
+  		while(1) {
+                          int n = read(0, buffer, BUFSIZE);
+                          if (strncmp(buffer, "quit", 4) == 0) {
+                                  return;
+                          }
+                          write(fd1, buffer, n);
+                  }
+      	}
+  }
+  
+  void exec_m(char **s){
+  	execv(s[0], s);
+  }
+  
+  int main(int argc, char **argv){
+      char in[50], *res[20] = {0};
+      char *inst[6] = {"cat", "cd", "cp", "mkdir", "ls", "vi"};
+      void (*f[7])(char **) = {cat_m, cd_m, cp_m, mkdir_m, ls_m, vi_m, exec_m};
+      int i;
+      pid_t pid;
+  
+      while(1){
+          printf("> ");
+          gets(in);
+          i = 0;
+          res[i] = strtok(in, " ");
+          if(strcmp(res[0], "exit")==0)
+              exit(0);
+  
+          while(res[i]){
+              i++;
+              res[i] = strtok(NULL, " ");
+          }
+  
+          for(i=0;i<6;i++){
+              if(!strcmp(res[0], inst[i]))
+                  break;
+          }
+  
+  	if(i == 1){
+  	    cd_m(res);
+  	}
+  	else{
+  	    pid = fork();
+  	    if(pid == 0){
+  	        f[i](res);
+  	        exit(0);
+  	    }
+  	    else{
+  	        wait(0);
+  	    }
+  	}
+      }
+  }
+  ```
 
-    ```c
-    #include <stdio.h>
-    #include <sys/types.h>
-    #include <sys/stat.h>
-    #include <sys/wait.h>
-    #include <fcntl.h>
-    #include <unistd.h>
-    #include <dirent.h>
-    #include <string.h>
-    #include <time.h>
-    #include <ftw.h>
-    #include <stdlib.h>
-    
-    #define BUFSIZE 512
-    
-    void cp_m(char **s){
-        char buffer[BUFSIZE];
-        int fd1, fd2, nread;
-    
-        fd1 = open(s[1], O_RDONLY);
-    
-        if (fd1 == -1) {
-            return;
-        } else {
-            fd2 = open(s[2], O_WRONLY | O_CREAT | O_EXCL, 0777);
-    
-            if(fd2 == -1){
-                fd2 = open(s[2], O_WRONLY | O_CREAT | O_TRUNC, 0777);
-            }
-    
-            nread = read(fd1, buffer, BUFSIZE);
-            while(nread > 0){
-                write(fd2, buffer, nread);
-                nread = read(fd1, buffer, BUFSIZE);
-            }
-        }
-    
-        close(fd1);
-        close(fd2);
-    }
-    
-    int list(const char *name, const struct stat *status, int type) {
-    
-        struct stat buffer;
-        char *arguments[] = {};
-        arguments[0] = "cp";
-    
-    //되는데 복붙이 완벽하게 안 됨, 디렉토리도 복사 되고 그런다
-    //    if(type == FTW_D){
-    //        DIR *dp;
-    //        struct dirent *d;
-    //        dp = opendir(name);
-    //        while((d = readdir(dp)) != NULL){
-    //            if(d->d_name[0] != '.'){
-    //                stat(d->d_name, &buffer);
-    //                if(!S_ISDIR(buffer.st_mode)){
-    //                    printf("[%s] : %s\n", name, d->d_name);
-    //
-    //                    char buff[BUFSIZE];
-    //                    buff[0] = '\0';
-    //                    strcat(buff, (char*)name);
-    //                    strcat(buff, "/");
-    //                    strcat(buff, d->d_name);
-    //                    arguments[1] = buff;
-    //
-    //                    char buff2[BUFSIZE];
-    //                    buff2[0] = '\0';
-    //                    strcat(buff2, "./TEMP/");
-    //                    strcat(buff2, d->d_name);
-    //                    arguments[2] = buff2;
-    //
-    //                    cp_m(arguments);
-    //                }
-    //            }
-    //        }
-    //    }
-    
-    //시도 중
-    //    if(type == FTW_F){
-    //        char *arguments[] = {};
-    //        arguments[0] = "cp";
-    //        char buff[BUFSIZE];
-    //        buff[0] = '\0';
-    //        strcat(buff, (char*)name);
-    //        arguments[1] = buff;
-    //
-    //        printf("%s\n", arguments[1]);
-    //    }
-        return 0;
-    }
-    
-    int main(int argc, char **argv){
-    
-        //예시 스트링으로 해보기
-        //일단 파일이름으로만 복사 붙이기 성공시키고
-        //이후에 경로 이름도 추가해서 복사 붙이기 성공시키기
-        //간단한 방법으로
-    
-        mkdir("TEMP", 0777);
-        ftw(".", list, 1);
-    
-        return 0;
-    }
-    ```
+- backup함수 도움 받아서 완성
+  기존에 만든 cp를 활용을 못함. 그래서 다시 만듬
 
-  - //예시 스트링으로 해보기
-    //일단 파일이름으로만 복사 붙이기 성공시키고
-    //이후에 경로 이름도 추가해서 복사 붙이기 성공시키기
-    //간단한 방법으로
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  
+  #define BUFSIZE 512
+  
+  int backup(const char *name, const struct stat *status, int type){
+  
+      char buffer[BUFSIZE], file1[BUFSIZE], file2[BUFSIZE] = "./TEMP/";
+      int fd1, fd2, i, nread;
+  
+      if(type == FTW_F){
+  
+          if(strncmp((char*)name, "./TEMP", 6) == 0)
+              return 0;
+  
+          fd1 = open(name, O_RDONLY);
+  
+          strcpy(file1, name + 2);
+  
+          for(i=0;i<strlen(file1);i++){
+              if(file1[i] == '/')
+                  file1[i] = '_';
+          }
+  
+          strcat(file2, file1);
+  
+          fd2 = open(file2, O_WRONLY | O_CREAT, status->st_mode&0777);
+  
+          nread = read(fd1, buffer, BUFSIZE);
+          while(nread > 0){
+              write(fd2, buffer, nread);
+              nread = read(fd1, buffer, BUFSIZE);
+          }
+      }
+  
+      return 0;
+  }
+  ```
 
   - 시험범위 2-6장, 설계과제 1, 2-1, 2-2 backup 코딩까지
     월요일 필기, 수요일 실기
-
