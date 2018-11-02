@@ -232,7 +232,7 @@
 - 한 프로세스에서 무시되는 signal은 exec()후에도 계속 무시된다.
   exec으로 실행하면 process가 동일하기 때문에 signal을 계속 무시하게 된다
 
-- Signal  집합 지정
+- Signal 집합 지정
 
   - sigemptyset => sigaddset : 전부 0으로 설정한 후 block할 시그널 설정
   - sifgillset => sigdelset : 전부 다 1로 설정한 후 block하지 않을 시그널 설정
@@ -265,5 +265,289 @@
     if(sigismember(&mask1, SIGINT))
         printf("SIGINT is setting.\n");
     ```
+
+- 예제
+
+  - 시그널 보내고 지정된 함수로 처리
+
+    - block할 시그널 설정을 아무것도 해주지 않았고, SIGINT 시그널이 오면 지정된 함수 말고 기존의 처리 방식을 사용하게 설정했음
+
+    ```c
+    #include <stdio.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/wait.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <dirent.h>
+    #include <string.h>
+    #include <time.h>
+    #include <ftw.h>
+    #include <stdlib.h>
+    #include <signal.h>
+    
+    #define BUFSIZE 512
+    
+    void catchsig(int signo){
+        //전달받은 시그널이 무엇인지 알려주는 함수
+        psignal(signo, "[Received Signal]");
+    }
+    
+    void do_child(){
+        int i;
+        static struct sigaction act;
+    
+        sigemptyset(&act.sa_mask);
+    //    sigaddset(&act.sa_mask, SIGINT);
+    //    sigaddset(&act.sa_mask, SIGUSR1);
+    //    sigaddset(&act.sa_mask, SIGUSR2);
+    
+        act.sa_handler = catchsig;
+    
+        //sigaction(SIGINT, &act, NULL);
+        sigaction(SIGUSR1, &act, NULL);
+        sigaction(SIGUSR2, &act, NULL);
+    
+        for(i=0;i<5;i++){
+            printf("child is running ... \n");
+            sleep(1);
+        }
+    }
+    
+    int main(int argc, char **argv){
+        int status;
+        pid_t pid;
+    
+        pid = fork();
+    
+        if(pid == 0){
+            do_child();
+        }
+        else{
+            sleep(2);
+            kill(pid, SIGINT);
+            sleep(1);
+            kill(pid, SIGUSR1);
+            sleep(1);
+            kill(pid, SIGUSR2);
+        }
+    
+        wait(&status);
+    
+        if(WIFEXITED(status)){
+            printf("Exit status from %d was %d\n", pid, WEXITSTATUS(status));
+        }
+        else{
+            printf("Exit status from %d was %d\n", pid, WTERMSIG(status));
+        }
+    
+        exit(0);
+    }
+    ```
+
+  - 시그널 보내고 지정된 함수로 처리하는데 지정된 시그널은 block하기
+
+    - block할 시그널로 SIGINT, SIGUSR1, SIGUSR2를 설정을 해두었음. 그러면 일단 시그널 처리는 기다리고 있다가 자식 프로세스 종료 후 block된 처리를 함
+    - SIGINT 시그널이 오면 지정된 함수 말고 기존의 처리 방식을 사용하게 설정했음
+
+    ```c
+    #include <stdio.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/wait.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <dirent.h>
+    #include <string.h>
+    #include <time.h>
+    #include <ftw.h>
+    #include <stdlib.h>
+    #include <signal.h>
+    
+    #define BUFSIZE 512
+    
+    void catchsig(int signo){
+        psignal(signo, "[Received Signal]");
+    }
+    
+    void do_child(){
+        int i;
+        static struct sigaction act;
+    
+        sigemptyset(&act.sa_mask);
+        sigaddset(&act.sa_mask, SIGINT);
+        sigaddset(&act.sa_mask, SIGUSR1);
+        sigaddset(&act.sa_mask, SIGUSR2);
+    
+        act.sa_handler = catchsig;
+    
+        sigaction(SIGINT, &act, NULL);
+        sigaction(SIGUSR1, &act, NULL);
+        sigaction(SIGUSR2, &act, NULL);
+    
+        for(i=0;i<5;i++){
+            printf("child is running ... \n");
+            sleep(1);
+        }
+    }
+    
+    int main(int argc, char **argv){
+        int status;
+        pid_t pid;
+    
+        pid = fork();
+    
+        if(pid == 0){
+            do_child();
+        }
+        else{
+            sleep(2);
+            kill(pid, SIGINT);
+            sleep(1);
+            kill(pid, SIGUSR1);
+            sleep(1);
+            kill(pid, SIGUSR2);
+        }
+    
+        wait(&status);
+    
+        if(WIFEXITED(status)){
+            printf("Exit status from %d was %d\n", pid, WEXITSTATUS(status));
+        }
+        else{
+            printf("Exit status from %d was %d\n", pid, WTERMSIG(status));
+        }
+    
+        exit(0);
+    }
+    ```
+
+- Signal 집합 지정 중 sa_sigaction()에 의한 signal handling
+
+  ```c
+  int main(void){
+      static struct sigaction act;
+      act.sa_flags = SA_SIGINFO;
+      act.sa_sigaction = handler;
+      sigaction(SIGUSR1, &act, NULL);
+      ...
+  }
+  
+  void handler(int signo, siginfo_t *sf, ucontext_t *uc){
+      psiginfo(sf, "...");
+      printf("%d\n", sf->si_code);
+  }
+  ```
+
+- 이전의 설정 복원하기
+
+  ```c
+  sigaction(SIGTERM, NULL, &oact);
+  ```
+
+  ```c
+  act.sa_handler = SIG_IGN;
+  sigaction(SIGTERM, &act, NULL);
+  //do anything
+  sigaction(SIGTERM, &oact, NULL);
+  ```
+
+  ```c
+  #include<signal.h>
+  
+  static struct sigaction act, oact;
+  // SIGTERM : 소프트웨어 종료 시그널
+  // SIGTERM 을 위한 과거의 행동을 남겨둔다
+  sigaction(SIGTERM, NULL, &oact);
+  // SIGTERM 을 위한 새로운 행동 지정.
+  act.sa_handler = SIG_IGN;
+  sigaction(SIGTERM, &act, NULL);
+  /* 무언가 작업 */
+  // 과거 행동 복원
+  sigaction(SIGTERM, &oact, NULL);
+  ```
+
+- Alarm signal 설정
+
+  - Timer 사용
+
+    ```c
+    #include <signal.h>
+    
+    unsigned int alarm(unsigned int secs);
+    ```
+
+  - unsigned int secs : 초 단위의 시간, 시간 종료 후 SIGALRM을 보낸다
+
+  - alarm은 exec 후에도 계속 작동한다. 프로그램 내용은 변해도 프로세는 같기 때문에
+
+  - 하지만 fork 후에는 자식 process에 대한 alarm은 작동하지 않는다. fork는 alarm을 상속하지 않음
+
+  - 주의 : alarm(0) 은 alarm 끄기. 바로 알람 보낸다는거 아님
+
+  - alarm은 누적되지 않음. 2번 사용되면, 두 번째 alarm이 대체
+
+  - 두 번째 alarm의 return 값이 첫 alarm의 잔여시간
+
+- signal blocking
+
+  - 사용법
+
+    ```c
+    #include <signal.h>
+    
+    int sigprocmask(int how, const sigset_t *set, sigset_t *oset)
+    ```
+
+  - oset은 봉쇄된 signal들의 현재 mask. 관심없으면 NULL로 지정
+
+  - 시그널 집합을 사용해 한 번에 여러 시그널을 블록할 수 있음
+
+    - how : 시그널을 블록할 것인지, 해제할 것인지 여부
+    - set : 블록하거나 해제할 시그널 집합의 주소
+    - oset : NULL 또는 이전 설정값을 저장할 시그널 집합의 주소
+
+  - set에 지정한 시그널 집합을 블록할 것인지, 해제할 것인지 how에 지정해 호출한다.
+
+    - SIG_BLOCK : set에 지정한 시그널 집합을 시그널 마스크에 추가한다. 봉쇄 제거
+    - SIG_UNBLOCK : set에 지정한 시그널 집합을 시그널 마스크에서 제거한다
+    - SIG_SETMASK : set에 지정한 시그널 집합으로 현재 시그널 마스크를 대체한다. set에 있는 signal들을 지금부터 봉쇄
+
+  - set은 블록하거나 해제할 시그널 집합을 가리키고, 세 번째 인자인 oset은 NULL이 아니면 이전 설정값이 저장된다.
+
+  - 예제
+
+    ```c
+    int main(void){
+        sigset_t new;
+        
+        sigemptyset(&new);
+        sigaddset(&new, SIGINT);
+        sigaddset(&new, SIGQUIT);
+        sigprocmask(SIG_BLOCK, &new, (sigset_t *)NULL);
+        
+        printf("Blocking Signals : SIGINT, SIGQUIT\n");
+        printf("Send SIGQUIT\n");
+        kill(getpid(), SIGQUIT);
+        
+        printf("Unblocking Signals\n");
+        sigprocmask(SIG_UNBLOCK, &new, (sigset_t *)NULL);
+        
+        return 0;
+    }
+    ```
+
+- pause 시스템 콜
+
+  - 사용법
+
+    ```c
+    #include <unistd.h>
+    int pause(void);
+    ```
+
+  - signal 도착까지 실행을 일시 중단(CPU 사용 없이)
+
+  - signal이 포착되면 처리 routine 수행 & -1 return
 
 - 
