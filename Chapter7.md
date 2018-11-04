@@ -537,6 +537,74 @@
     }
     ```
 
+  - 예제2. input시 interrupt 키 처리 방법
+
+    - 이렇게 하면 입력을 받은 후에 interrupt 키는 상관이 없지만, 입력 기다릴 때 ctrl+c interrupt 키를 누르면 0으로 입력을 받아버림.
+
+    ```c
+    #define BUFSIZE 512
+    
+    void catchint(int);
+    
+    int main(int argc, char **argv){
+        int i, j, num[10], sum = 0;
+        static struct sigaction act;
+    
+        act.sa_handler = catchint;
+        sigaction(SIGINT, &act, NULL);
+    
+        for(i=0;i<5;i++){
+            scanf("%d", &num[i]);
+            sum += num[i];
+            for(j=0;j<=i;j++){
+                printf("...%d\n", num[i]);
+                sleep(1);
+            }
+        }
+        exit(0);
+    }
+    
+    void catchint(int signo){
+        printf("DO NOT INTERRUPT ... \n");
+    }
+    ```
+
+    - 근데 scanf로 입력을 받을 때 ctrl+c interrupt키를 block 시켜주고 입력을 받은 후에 다시 풀어주면 제대로 입력을 받을 수 있음
+
+    ```c
+    #define BUFSIZE 512
+    
+    void catchint(int);
+    
+    int main(int argc, char **argv){
+        int i, j, num[10], sum = 0;
+        static struct sigaction act;
+        sigset_t mask;
+    
+        act.sa_handler = catchint;
+        sigaction(SIGINT, &act, NULL);
+    
+        sigemptyset(&mask);
+        sigaddset(&mask, SIGINT);
+    
+        for(i=0;i<5;i++){
+            sigprocmask(SIG_SETMASK, &mask, NULL);
+            scanf("%d", &num[i]);
+            sigprocmask(SIG_UNBLOCK, &mask, NULL);
+            sum += num[i];
+            for(j=0;j<=i;j++){
+                printf("...%d\n", num[i]);
+                sleep(1);
+            }
+        }
+        exit(0);
+    }
+    
+    void catchint(int signo){
+        printf("DO NOT INTERRUPT ... \n");
+    }
+    ```
+
 - pause 시스템 콜
 
   - 사용법
@@ -550,4 +618,3 @@
 
   - signal이 포착되면 처리 routine 수행 & -1 return
 
-- 
