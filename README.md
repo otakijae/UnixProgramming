@@ -123,7 +123,44 @@
   10개의 정수를 입력으로 받아 그 합을 출력하는 프로그램을 작성 합니다. 단, 10초간 사용자로부터 의 입력이 없으면, 경고 메시지를 출력하고 다시 입력을 기다립니다.
 
   ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
   
+  #define BUFSIZE 512
+  
+  void catchalarm(int);
+  
+  int main(int argc, char **argv){
+  
+          int i, num, sum = 0;
+          static struct sigaction act;
+  
+          act.sa_handler = catchalarm;
+          sigaction(SIGALRM, &act, NULL);
+  
+          for(i=0;i<10;i++){
+                  do{
+                          alarm(10);
+                  }while(scanf("%d", &num) < 0);
+                  alarm(0);
+                  sum += num;
+                  printf("sum = %d\n", sum);
+          }
+          exit(0);
+  }
+  
+  void catchalarm(int signo){
+          printf("[Warning]No input for 10 seconds ... %d\n", signo);
+  }
   ```
 
 ## 20181031
@@ -140,5 +177,8 @@
   http://faq.hostway.co.kr/?mid=Linux_ETC&page=8&document_srl=1426
   https://skylit.tistory.com/90
   ```
+
+
+## 20181105
 
 - 
