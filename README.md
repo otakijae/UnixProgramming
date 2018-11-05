@@ -181,4 +181,80 @@
 
 ## 20181105
 
-- 
+- p9-1
+  메모리 매핑을 이용한 두 개의 프로그램을 작성 합니다.
+
+  - (a) reader 프로그램은 “temp" 파일을 메모리 매핑 한 후, scanf()로 10개의 정수를 읽어서 매핑된 파일에 저장하는 작업을 10회 실행 합니다.
+
+    ```c
+    #define BUFSIZE 512
+    
+    int main(int argc, char **argv){
+            int i, fd;
+            int *addr;
+    
+            fd = open("temp", O_RDWR | O_CREAT, 0600);
+            addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+        
+            ftruncate(fd, sizeof(int)*10);
+    
+            for(i=0;i<10;i++){
+                    scanf("%d", addr+i);
+            }
+            exit(0);
+    }
+    ```
+
+  - (b) writer 프로그램은 “temp" 파일을 메모리 매핑 한 후, 매핑된 파일에 있는 정수를 출력하는 작업을 10회 실행합니다 (printf() 사용). 단, 출력 프로그램은 5초간 sleep() 한 후 5회의 출력 작업을 연속 진 행 하고 다시 5초간 sleep() 한 후 5회의 출력 작업을 진행 합니다.
+
+    ```c
+    #define BUFSIZE 512
+    
+    int main(int argc, char **argv){
+            int i, j, fd;
+            int *addr;
+    
+            fd = open("temp", O_RDWR | O_CREAT, 0600);
+            addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    
+        	//굳이 sleep해주는건 동기화 때문에
+            sleep(5);
+    
+            for(i=0;i<10;i++){
+                    sleep(5);
+                    for(j=0;j<5;j++){
+                            printf("%d ", *(addr+i));
+                    }
+                    printf("\n");
+            }
+            exit(0);
+    }
+    ```
+
+  - (c) 두 프로그램이 모두 종료 한 후 ”temp" 파일의 크기를 확인합니다.
+
+    ```c
+    40으로 동일
+    ```
+
+- P9-2
+  메모리 매핑을 이용한 두 개의 프로그램을 작성 합니다.
+
+  - (a) reader 프로그램은 “temp" 파일을 메모리 매핑 한 후, 외부 입력을 읽어서 (read() 시스템 콜 사용) 매핑된 메모리에 저장하는 작업을 3회 실행 합니다.
+
+    ```c
+    
+    ```
+
+  - (b) writer 프로그램은 “temp" 파일을 메모리 매핑 한 후, 매핑된 메모리의 내용을 출력하는 작업을 3회 실행합니다 (write() 시스템 콜 사용). 단. 3초간 sleep() 하면서 출력 작업을 진행합니다.
+
+    ```c
+    
+    ```
+
+- p9-3.c
+  Parent process는 세 개의 child process들을 만들고, 모든 child process가 종료 한 후 종료합니다. 각 child process는 자신의 순서가 될 때까지 대기 하였다가, 1초씩 쉬면서 자신의 process id를 5 회 출력 한 후 종료합니다. child process의 id 츨력 순서는 생성 순서의 역순이며, 이와 같은 순서 동 기화 작업은 매핑된 파일을 이용하여 진행 합니다.
+
+  ```c
+  
+  ```
