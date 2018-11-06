@@ -243,18 +243,150 @@
   - (a) reader 프로그램은 “temp" 파일을 메모리 매핑 한 후, 외부 입력을 읽어서 (read() 시스템 콜 사용) 매핑된 메모리에 저장하는 작업을 3회 실행 합니다.
 
     ```c
+    #include <stdio.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/wait.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <dirent.h>
+    #include <string.h>
+    #include <time.h>
+    #include <ftw.h>
+    #include <stdlib.h>
+    #include <sys/mman.h>
     
+    #define BUFSIZE 512
+    
+    int main(int argc, char **argv){
+    
+            int i, fd, len = 0;
+            char *addr;
+    
+            fd = open("temp", O_RDWR | O_CREAT, 0600);
+    
+            addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    
+            ftruncate(fd, BUFSIZE);
+            for(i=0;i<3;i++){
+                    len = len + read(0, addr + len, BUFSIZE);
+                    printf("[read] : %d\n", len);
+                    if(len > BUFSIZE)
+                            break;
+            }
+    
+            exit(0);
+    }
     ```
 
   - (b) writer 프로그램은 “temp" 파일을 메모리 매핑 한 후, 매핑된 메모리의 내용을 출력하는 작업을 3회 실행합니다 (write() 시스템 콜 사용). 단. 3초간 sleep() 하면서 출력 작업을 진행합니다.
 
     ```c
+    #include <stdio.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/wait.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <dirent.h>
+    #include <string.h>
+    #include <time.h>
+    #include <ftw.h>
+    #include <stdlib.h>
+    #include <sys/mman.h>
     
+    #define BUFSIZE 512
+    
+    int main(int argc, char **argv){
+    
+            int i, fd, len = 0;
+            char *addr;
+    
+            fd = open("temp", O_RDWR | O_CREAT, 0600);
+    
+            addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+            printf("[test]%s\n", addr);
+    
+            for(i=0;i<3;i++){
+                    sleep(3);
+                    len = len + write(1, addr + len, BUFSIZE);
+                    //printf("[write] : %d\n", len);
+                    write(1, "-------\n", 8);
+                    if(len > BUFSIZE)
+                            break;
+            }
+    
+            exit(0);
+    }
     ```
 
 - p9-3.c
   Parent process는 세 개의 child process들을 만들고, 모든 child process가 종료 한 후 종료합니다. 각 child process는 자신의 순서가 될 때까지 대기 하였다가, 1초씩 쉬면서 자신의 process id를 5 회 출력 한 후 종료합니다. child process의 id 츨력 순서는 생성 순서의 역순이며, 이와 같은 순서 동 기화 작업은 매핑된 파일을 이용하여 진행 합니다.
 
   ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  #include <sys/mman.h>
   
+  #define BUFSIZE 512
+  
+  void do_child(int i){
+          int fd, child, j;
+          int *addr;
+  
+          fd = open("temp", O_RDWR, 0600);
+          addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+          child = *(addr + 0);
+  
+          while(i != child){
+                  sleep(2);
+                  printf(".........................pid : %d waiting...\n", i);
+  
+                  addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+                  child = *(addr + 0);
+          }
+  
+          for(j=0;j<5;j++){
+                  sleep(1);
+                  printf("%d : pid = %d\n", i, getpid());
+          }
+          *(addr + 0) = child - 1;
+  
+          exit(0);
+  }
+  
+  int main(int argc, char **argv){
+  
+          int i, status, fd;
+          pid_t pid[3];
+          int *addr;
+  
+          fd = open("temp", O_RDWR | O_CREAT | O_TRUNC, 0600);
+          addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+          ftruncate(fd, sizeof(int));
+          *(addr + 0) = 2;
+  
+          for(i=0;i<3;i++){
+                  pid[i] =fork();
+                  if(pid[i] == 0){
+                          do_child(i);
+                  }
+          }
+  
+          for(i=0;i<3;i++){
+                  wait(&status);
+          }
+  
+          exit(0);
+  }
   ```
+
