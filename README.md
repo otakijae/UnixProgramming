@@ -459,7 +459,73 @@
   parent process는 세 개의 child process를 만들고, parent process에서 child process로의 단방향 통신이 가능 한 pipe를 만듭니다. parent process는 외부 입력으로 정수를 12개 입력 받아, 세 child process에게 순서대로 보냅니다. child process는 자신이 받은 정수를 자신의 프로세스 id와 함께 출력 합니다. parent process는 모든 정수를 전달 한 후 정수 -1을 전달하고, -1을 전달 받으면 child process는 종료 합니다. 모든 child process의 종료를 확인 한 후 parent process는 종료 합니다.
 
   ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  #include <sys/mman.h>
   
+  #define BUFSIZE 512
+  
+  void do_child(int id, int p[3][2]){
+      int i, in, pid = getpid();
+  
+      for(i=0;i<3;i++){
+          close(p[i][1]);
+          if(id != i)
+              close(p[i][0]);
+      }
+  
+      while(1){
+          read(p[id][0], &in, sizeof(int));
+          if(in == -1)
+              exit(0);
+          else
+              printf("id : %d, pid : %d, input : %d\n", id, pid, in);
+      }
+  }
+  
+  int main(int argc, char **argv){
+      int i, in, pid, p[3][2];
+  
+      for(i=0;i<3;i++){
+          pipe(p[i]);
+      }
+  
+      for(i=0;i<3;i++){
+          if(fork() == 0){
+              do_child(i, p);
+          }
+      }
+  
+      for(i=0;i<3;i++){
+          close(p[i][0]);
+      }
+  
+      for(i=0;i<12;i++){
+          scanf("%d", &in);
+          write(p[i%3][1], &in, sizeof(int));
+      }
+  
+      in = -1;
+  
+      for(i=0;i<3;i++){
+          write(p[i][1], &in, sizeof(int));
+      }
+  
+      for(i=0;i<3;i++){
+          wait(0);
+      }
+  
+      exit(0);
+  }
   ```
 
 - p10-2.c
