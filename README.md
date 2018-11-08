@@ -310,7 +310,6 @@
             for(i=0;i<3;i++){
                     sleep(3);
                     len = len + write(1, addr + len, BUFSIZE);
-                    //printf("[write] : %d\n", len);
                     write(1, "-------\n", 8);
                     if(len > BUFSIZE)
                             break;
@@ -322,6 +321,8 @@
 
 - p9-3.c
   Parent process는 세 개의 child process들을 만들고, 모든 child process가 종료 한 후 종료합니다. 각 child process는 자신의 순서가 될 때까지 대기 하였다가, 1초씩 쉬면서 자신의 process id를 5 회 출력 한 후 종료합니다. child process의 id 츨력 순서는 생성 순서의 역순이며, 이와 같은 순서 동 기화 작업은 매핑된 파일을 이용하여 진행 합니다.
+
+  - 일일이 메모리 맵핑하지 말고, 메모리 매핑한 배열을 child 함수 인자로 넘겨줘서 실행하면 더 간단하게 코드 작성 가능
 
   ```c
   #include <stdio.h>
@@ -339,25 +340,21 @@
   
   #define BUFSIZE 512
   
-  void do_child(int i){
+  void do_child(int i, int *addr){
           int fd, child, j;
-          int *addr;
   
-          fd = open("temp", O_RDWR, 0600);
-          addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
           child = *(addr + 0);
   
           while(i != child){
                   sleep(2);
-                  printf(".........................pid : %d waiting...\n", i);
+                  printf(".........................pid : %d waiting\n", i);
   
-                  addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
                   child = *(addr + 0);
           }
   
           for(j=0;j<5;j++){
                   sleep(1);
-                  printf("%d : pid = %d\n", i, getpid());
+                  printf("%dth child pid = %d\n", i, getpid());
           }
           *(addr + 0) = child - 1;
   
@@ -378,14 +375,14 @@
           for(i=0;i<3;i++){
                   pid[i] =fork();
                   if(pid[i] == 0){
-                          do_child(i);
+                          do_child(i, addr);
                   }
           }
   
           for(i=0;i<3;i++){
                   wait(&status);
           }
-      
+  
           exit(0);
   }
   ```

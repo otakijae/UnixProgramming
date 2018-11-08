@@ -1476,6 +1476,11 @@
 - p7-3.c
   2번 프로그램에서 parent process가 child process의 생성 순서의 역순으로 종료 대기를 하도록 수정하시오.
 
+
+  - WNOHANG 옵션을 주면 block이 안 되는거고, 안 주고 0으로 설정하면 block하여 대기
+  - wait은 특정 pid 명시 안 하고 그냥 끝난 아무 프로세스 인지하고 block해제
+  - waitpid는 특정 pid를 대기 가능. block할지 안 할지도 설정 가능
+
   ```c
   int main(int argc, char **argv){
           int i, status;
