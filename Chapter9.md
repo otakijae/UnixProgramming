@@ -292,4 +292,78 @@
     }
     ```
 
-- 
+- FIFO
+
+  - pipe는 동일 ancestor를 갖는 프로세스들만 연결 가능, fifo는 모든 프로세스들을 연결 가능. fifo 서로 연관없는 프로세스간의 통신을 위해 사용된다
+
+  - UNIX의 file 이름을 부여 받는다.
+
+    - 그냥 pipe는 시스템 안에 흔적을 남기지 않지만, fifo는 작업 이후에 fifo 파일이라는 흔적을 남긴다.
+    - 일반 파일처럼 open, close, read, write, remove가 가능함
+    - 근데 중요한건 ls -a 해서 파일을 확인해보면 prw_ _ _ _ _ _ 이렇게 나오는데 pipe라는 뜻이다. 파일과 비슷하게 나오지만 실제로 파일은 아니니까 주의할 것
+
+  - 소유자, 크기, 연관된 접근 허가를 가진다
+
+  - fifo 만들기, 사용법
+
+    ```c
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    
+    int mkfifo(const char *pathname, mode_t mode);
+    ```
+
+    - fifo open (O_RDONLY or O_WRONLY)
+    - fifo는 pipe 단방향 통신 채널이기 때문에 동시에 O_RDWR하게 되면 데이터가 섞인다는 문제가 발생하지만
+    - select 시스템 콜 사용할 때처럼 write프로그램이 종료하고 아무것도 안 보내게 되면 0을 지속적으로  반환하게 되어 무한 반복으로 입력 값을 기다리는 read프로그램이 종료를 못하게 된다
+    - 그래서, 이런 경우 O_RDWR을 사용하여 write가 없으면 block이 되게 만들어서 프로그램을 종료시키는데 사용한다
+    - reader가 O_RDWR로 fifo를 open하게 만들어서 writer 종료 시 blocking 된 채로 기다리게 만든다. 아니면 무한으로 0을 return한다.
+
+  - fifo blocking / non-blocking
+
+    ```c
+    mkfifo("/tmp/fifo", 0666);
+    
+    fd = open("/tmp/fifo", O_WRONLY);
+    fd = open("/tmp/fifo", O_WRONLY|O_NONBLOCK);
+    ```
+
+    - 일반 open 호출은 다른 프로세스가 읽기 또는 쓰기를 위해 open될 때까지 blocking 된다. O_WRONLY로 open했을 때, 다른 사람이 O_RDONLY로 open할 때까지 기다리는 것
+    - Non-blocking open인 경우, 상대 프로세스가 준비되지 않으면 -1을 return하고 이때 errno = ENXIO. 상대편이 없으면 영원히 block되니까, 상대편이 있으면 open하고 상대편이 없으면 -1 return 하면서 open 안 함
+    - fifo를 이용한 통신의 예제에서 reader가 O_RDWR로 fifo를 open하게 만들어서 writer 종료 시 blocking 된 채로 기다리게 만든다. 아니면 무한으로 0을 return한다.
+
+    ```c
+    int main(void){
+        int fd, n;
+        char buf[512];
+        
+        mkfifo("fifo", 0600);
+        fd = open("fifo", O_RDWR); //********************주의할 것
+        for(;;){
+            n = read(fd, buf, 512);
+            write(1, buf, n);
+        }
+    }
+    ```
+
+    ```c
+    int main(void){
+        int fd, j, nread;
+        char buf[512];
+        
+        if((fd=open("fifo", O_WRONLY|O_NONBLOCK))<0){
+            printf("fifo open failed\n");
+            exit(1);
+        }
+        
+        for(j=0;j<3;j++){
+            nread = read(0,buf,512);
+            write(fd, buf, nread);
+        }
+        
+        exit(0);
+    }
+    ```
+
+    - O_RDWR로 open한 이유(세번째 강조) : 여기서 데이터 쓰는 사람은 O_WRONLY로 open했는데, 읽는 사람은 O_RDWR로 open했음. 읽는 사람이 O_RDONLY로 open하면, 쓰다가 쓰는 사람이 종료하면 쓰기용 pipe가 닫히면 0을 return하면서 종료 안 하고 계속 읽어오게 된다. block이 안 됨. 그래서 가상의 write 파이프를 만들어서 쓰지는 않지만 가상의 write를 만들어서 불필요한 0 return 만들지 않고, write는 어차피 없도록 설계를 했기 때문에 계속 block 해놓음
+    - Non-block으로 fifo open한 이유 : write하려는데 읽는 사람이 없으면 SIGPIPE보내서 종료하려고 함. 그래서 가령 read 파이프가 먼저 안 만들어져서 write 프로그램이 먼저 실행되는 경우, 읽는 사람이 안 만들어져서 SIG를 보내서 종료를 하려고 할 수 있으니 이렇게 non-block으로 설정은 한 것임
