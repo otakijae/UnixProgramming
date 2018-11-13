@@ -531,8 +531,53 @@
 - p10-2.c
   parent process는 세 개의 child process를 만들고, 모든 child process가 종료 한 후 종료 합니다. 각 child process는 자신의 순서가 될 때까지 대기 하였다가, 1초씩 쉬면서 (sleep (1); 사용) 자신의 process id(getpid(); 사용)를 5회 출력하는 작업을 한 후 종료 합니다. child process의 id 츨력 순서는 생성 순서의 역순이며, 이와 같은 순서 동기화 작업은 pipe를 이용하여 진행 합니다.
 
+  - signal에서의 pause / kill은,,, pipe에서 read / write라고 볼 수 있다.
+  - pipe에서 기본으로 blocking read로 설정이 되기 때문에 write가 오기 전까지 read는 block이 되기 때문에 기다릴 수 있다
+
   ```c
+  #define BUFSIZE 512
   
+  void do_child(int id, int pipe[2][2]){
+          char buffer = 'a';
+          int i, pid = getpid();
+  
+          if(id < 2){
+                  read(pipe[id][0], &buffer, 1);
+          }
+  
+          for(i=0;i<5;i++){
+                  sleep(1);
+                  printf("id : %d, pid : %d\n", id, pid);
+          }
+  
+          if(id > 0){
+                  write(pipe[id-1][1], &buffer, 1);
+          }
+  
+          exit(0);
+  }
+  
+  int main(int argc, char **argv){
+          int i, status, fd, p[2][2];
+          pid_t pid[3];
+  
+          for(i=0;i<2;i++){
+                  pipe(p[i]);
+          }
+  
+          for(i=0;i<3;i++){
+                  pid[i] =fork();
+                  if(pid[i] == 0){
+                          do_child(i, p);
+                  }
+          }
+  
+          for(i=0;i<3;i++){
+                  wait(&status);
+          }
+  
+          exit(0);
+  }
   ```
 
 
@@ -541,16 +586,70 @@
 - p11-1
   fifo를 이용하여 통신하는 두 개의 프로그램을 작성합니다. 프로그램 A는 외부 입력으로 정수를 입력 받아 프로그램 B에 전달합니다. 프로그램 B는 전달 받은 정수에 +8을 한 뒤 프로그램 A에 돌려줍니다. 프로그램 A는 돌려받은 정수 값을 출력 합니다. -1이 입력되면 두 프로그램은 종료합니다.
 
+  - O_WRONLY, O_RDONLY 명시해주는 순서가 중요함
+
+    ```c
+    //A
+    fd[0] = open(fifo[0], O_WRONLY);
+    fd[1] = open(fifo[1], O_RDONLY);
+    ```
+
+    ```c
+    //B
+    fd[0] = open(fifo[0], O_RDONLY);
+    fd[1] = open(fifo[1], O_WRONLY);
+    ```
+
+  - fifo f[0]을 이용한 파이프 fd[0]을 A에서 WRONLY로 만들었으면 RDONLY로 짝을 맞춰줘야하는데, 아니게 되면 서로를 계속해서 기다리게 되는 deadlock 상태가 발생하게 된다. 두 개만 있을 때는 적어서 큰 문제가 안 생기는데, 더 많은 프로그램이 개입을 하게되면 빈번하게 문제가 발생하게 된다.
+
   p11-1A.c
 
   ```c
+  int main(int argc, char **argv){
+          char fifo[2][3] = {"f1", "f2"};
+          int i, in, fd[2];
   
+          for(i=0;i<2;i++){
+                  mkfifo(fifo[i], 0600);
+          }
+  
+          fd[0] = open(fifo[0], O_WRONLY);
+          fd[1] = open(fifo[1], O_RDONLY);
+  
+          for(;;){
+                  scanf("%d", &in);
+                  write(fd[0], &in, sizeof(int));
+                  if(in == -1)
+                          exit(0);
+                  read(fd[1], &in, sizeof(int));
+                  printf("final A received : %d\n", in);
+          }
+  
+          exit(0);
+  }
   ```
 
   p11-1B.c
 
   ```c
+  int main(int argc, char **argv){
+          char fifo[2][3] = {"f1", "f2"};
+          int i, in, fd[2];
   
+          fd[0] = open(fifo[0], O_RDONLY);
+          fd[1] = open(fifo[1], O_WRONLY);
+  
+          for(;;){
+                  read(fd[0], &in, sizeof(int));
+                  printf("first B received : %d\n", in);
+                  if(in == -1)
+                          exit(0);
+                  in = in + 8;
+                  write(fd[1], &in, sizeof(int));
+          }
+  
+          exit(0);
+  }
   ```
 
 - p11-2
@@ -563,6 +662,122 @@
 - p11-3
   네 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 출력하는 프로그램을 작성합니다. 이 프로그램은 main() 함수의 arguments로 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 입력받습니다. 프로그램이 시작되면, 순서대로 자신의 프로세스 id를 출력합니다. 동기화 작업은 fifo를 사 용하여 수행합니다.
 
+  - 문제가 의도한 바인지 모르겠는데, 메인 함수 인자로 child id 순서를 명시해주면, 명시해준 child 순서로 작업 수행
+
+    ```
+    [s13011022@bce LAB11-12]$ ./p11-3.out 2 1 0 3
+    id : 2, pid : 55615 ... arguement_turn : 0
+    id : 2, pid : 55615 ... arguement_turn : 0
+    id : 2, pid : 55615 ... arguement_turn : 0
+    id : 2, pid : 55615 ... arguement_turn : 0
+    id : 2, pid : 55615 ... arguement_turn : 0
+    id : 1, pid : 55614 ... arguement_turn : 1
+    id : 1, pid : 55614 ... arguement_turn : 1
+    id : 1, pid : 55614 ... arguement_turn : 1
+    id : 1, pid : 55614 ... arguement_turn : 1
+    id : 1, pid : 55614 ... arguement_turn : 1
+    id : 0, pid : 55613 ... arguement_turn : 2
+    id : 0, pid : 55613 ... arguement_turn : 2
+    id : 0, pid : 55613 ... arguement_turn : 2
+    id : 0, pid : 55613 ... arguement_turn : 2
+    id : 0, pid : 55613 ... arguement_turn : 2
+    id : 3, pid : 55617 ... arguement_turn : 3
+    id : 3, pid : 55617 ... arguement_turn : 3
+    id : 3, pid : 55617 ... arguement_turn : 3
+    id : 3, pid : 55617 ... arguement_turn : 3
+    id : 3, pid : 55617 ... arguement_turn : 3
+    [s13011022@bce LAB11-12]$ ./p11-3.out 3 2 1 0
+    id : 3, pid : 9342 ... arguement_turn : 0
+    id : 3, pid : 9342 ... arguement_turn : 0
+    id : 3, pid : 9342 ... arguement_turn : 0
+    id : 3, pid : 9342 ... arguement_turn : 0
+    id : 3, pid : 9342 ... arguement_turn : 0
+    id : 2, pid : 9341 ... arguement_turn : 1
+    id : 2, pid : 9341 ... arguement_turn : 1
+    id : 2, pid : 9341 ... arguement_turn : 1
+    id : 2, pid : 9341 ... arguement_turn : 1
+    id : 2, pid : 9341 ... arguement_turn : 1
+    id : 1, pid : 9340 ... arguement_turn : 2
+    id : 1, pid : 9340 ... arguement_turn : 2
+    id : 1, pid : 9340 ... arguement_turn : 2
+    id : 1, pid : 9340 ... arguement_turn : 2
+    id : 1, pid : 9340 ... arguement_turn : 2
+    id : 0, pid : 9338 ... arguement_turn : 3
+    id : 0, pid : 9338 ... arguement_turn : 3
+    id : 0, pid : 9338 ... arguement_turn : 3
+    id : 0, pid : 9338 ... arguement_turn : 3
+    id : 0, pid : 9338 ... arguement_turn : 3
+    [s13011022@bce LAB11-12]$ ./p11-3.out 0 1 2 3
+    id : 0, pid : 12010 ... arguement_turn : 0
+    id : 0, pid : 12010 ... arguement_turn : 0
+    id : 0, pid : 12010 ... arguement_turn : 0
+    id : 0, pid : 12010 ... arguement_turn : 0
+    id : 0, pid : 12010 ... arguement_turn : 0
+    id : 1, pid : 12011 ... arguement_turn : 1
+    id : 1, pid : 12011 ... arguement_turn : 1
+    id : 1, pid : 12011 ... arguement_turn : 1
+    id : 1, pid : 12011 ... arguement_turn : 1
+    id : 1, pid : 12011 ... arguement_turn : 1
+    id : 2, pid : 12012 ... arguement_turn : 2
+    id : 2, pid : 12012 ... arguement_turn : 2
+    id : 2, pid : 12012 ... arguement_turn : 2
+    id : 2, pid : 12012 ... arguement_turn : 2
+    id : 2, pid : 12012 ... arguement_turn : 2
+    id : 3, pid : 12013 ... arguement_turn : 3
+    id : 3, pid : 12013 ... arguement_turn : 3
+    id : 3, pid : 12013 ... arguement_turn : 3
+    id : 3, pid : 12013 ... arguement_turn : 3
+    id : 3, pid : 12013 ... arguement_turn : 3
+    ```
+
   ```c
+  void do_child(int id, int argument_turn){
   
+      char buffer = 'a';
+      char fifo[3][6] = {"p3_f1", "p3_f2", "p3_f3"};
+      int i, fd[3];
+  
+      fd[0] = open(fifo[0], O_RDWR);
+      fd[1] = open(fifo[1], O_RDWR);
+      fd[2] = open(fifo[2], O_RDWR);
+  
+      if(argument_turn > 0){
+          read(fd[argument_turn-1], &buffer, 1);
+      }
+  
+      for(i=0;i<5;i++){
+          sleep(1);
+          printf("id : %d, pid : %d ... arguement_turn : %d\n", id, getpid(), argument_turn);
+      }
+  
+      if(argument_turn < 3){
+          write(fd[argument_turn], &buffer, 1);
+      }
+  
+      exit(0);
+  }
+  
+  int main(int argc, char **argv){
+  
+      char fifo[3][6] = {"p3_f1", "p3_f2", "p3_f3"};
+      int i, fd[3], status;
+      pid_t pid[4];
+  
+      for(i=0;i<3;i++){
+          mkfifo(fifo[i], 0600);
+      }
+  
+      for(i=0;i<4;i++){
+          pid[i] =fork();
+          if(pid[i] == 0){
+              do_child(i, atoi(argv[i+1]));
+          }
+      }
+  
+      for(i=0;i<4;i++){
+          wait(&status);
+      }
+  
+      exit(0);
+  }
   ```
