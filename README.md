@@ -653,131 +653,126 @@
   ```
 
 - p11-2
-  server process는 세 개의 client process들과 데이터를 주고받기 위한 fifo를 만듭니다. 각 client는 미리 정해진 이름의 FIFO로 접속하여, 표준 입력으로 입력된 정수를 server process에게 전송합니다. server process는 client process로부터 전송된 정수 값에 +8을 한 후, 해당 client에게 다시 보냅니다. client process는 돌려받은 정수 값을 표준 출력으로 출력합니다. client process는 정수 데이터의 입/출력 작업을 5회 반복 한 후 종료 합니다. client process로 부터의 입력을 blocking으로 기다리기 위해 select 문장을 사용합니다.
+  server process는 세 개의 client process들과 데이터를 주고받기 위한 fifo를 만듭니다. 각 client는 미리 정해진 이름의 FIFO로 접속하여, 표준 입력으로 입력된 정수를 server process에게 전송합니다. server process는 client process로부터 전송된 정수 값에 +8을 한 후, 해당 client에게 다시 보냅니다. client process는 돌려받은 정수 값을 표준 출력으로 출력합니다. client process는 정수 데이터의 입/출력 작업을 5회 반복한 후 종료 합니다. client process로 부터의 입력을 blocking으로 기다리기 위해 select 문장을 사용합니다.
+
+  - 일단 fifo 6개를 만들어서 3개는 서버기준 select로 read하는데 사용, 3개는 읽은 후 다시 (8을 더해야하는데 더하면 이상한 값이 넘어가서 일단 안 더하고 바로 넘겨줌) write하는 것으로 설계
+  - O_RDONLY 할 때, O_RDWR을 해야하는지 아니면 O_RDONLY를 해야하는지 아직 모르겠음
+  - p11-2server.c
 
   ```c
+  int main(int argc, char **argv) {
+      char fifo[6][15] = {"p2_f1", "p2_f2", "p2_f3", "p2_f4", "p2_f5", "p2_f6"};
+      int i, in, fd[6], select_check, nread;
+      fd_set set, master;
   
-  ```
-
-- p11-3
-  네 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 출력하는 프로그램을 작성합니다. 이 프로그램은 main() 함수의 arguments로 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 입력받습니다. 프로그램이 시작되면, 순서대로 자신의 프로세스 id를 출력합니다. 동기화 작업은 fifo를 사 용하여 수행합니다.
-
-  - 문제가 의도한 바인지 모르겠는데, 메인 함수 인자로 child id 순서를 명시해주면, 명시해준 child 순서로 작업 수행
-
-    ```
-    [s13011022@bce LAB11-12]$ ./p11-3.out 2 1 0 3
-    id : 2, pid : 55615 ... arguement_turn : 0
-    id : 2, pid : 55615 ... arguement_turn : 0
-    id : 2, pid : 55615 ... arguement_turn : 0
-    id : 2, pid : 55615 ... arguement_turn : 0
-    id : 2, pid : 55615 ... arguement_turn : 0
-    id : 1, pid : 55614 ... arguement_turn : 1
-    id : 1, pid : 55614 ... arguement_turn : 1
-    id : 1, pid : 55614 ... arguement_turn : 1
-    id : 1, pid : 55614 ... arguement_turn : 1
-    id : 1, pid : 55614 ... arguement_turn : 1
-    id : 0, pid : 55613 ... arguement_turn : 2
-    id : 0, pid : 55613 ... arguement_turn : 2
-    id : 0, pid : 55613 ... arguement_turn : 2
-    id : 0, pid : 55613 ... arguement_turn : 2
-    id : 0, pid : 55613 ... arguement_turn : 2
-    id : 3, pid : 55617 ... arguement_turn : 3
-    id : 3, pid : 55617 ... arguement_turn : 3
-    id : 3, pid : 55617 ... arguement_turn : 3
-    id : 3, pid : 55617 ... arguement_turn : 3
-    id : 3, pid : 55617 ... arguement_turn : 3
-    [s13011022@bce LAB11-12]$ ./p11-3.out 3 2 1 0
-    id : 3, pid : 9342 ... arguement_turn : 0
-    id : 3, pid : 9342 ... arguement_turn : 0
-    id : 3, pid : 9342 ... arguement_turn : 0
-    id : 3, pid : 9342 ... arguement_turn : 0
-    id : 3, pid : 9342 ... arguement_turn : 0
-    id : 2, pid : 9341 ... arguement_turn : 1
-    id : 2, pid : 9341 ... arguement_turn : 1
-    id : 2, pid : 9341 ... arguement_turn : 1
-    id : 2, pid : 9341 ... arguement_turn : 1
-    id : 2, pid : 9341 ... arguement_turn : 1
-    id : 1, pid : 9340 ... arguement_turn : 2
-    id : 1, pid : 9340 ... arguement_turn : 2
-    id : 1, pid : 9340 ... arguement_turn : 2
-    id : 1, pid : 9340 ... arguement_turn : 2
-    id : 1, pid : 9340 ... arguement_turn : 2
-    id : 0, pid : 9338 ... arguement_turn : 3
-    id : 0, pid : 9338 ... arguement_turn : 3
-    id : 0, pid : 9338 ... arguement_turn : 3
-    id : 0, pid : 9338 ... arguement_turn : 3
-    id : 0, pid : 9338 ... arguement_turn : 3
-    [s13011022@bce LAB11-12]$ ./p11-3.out 0 1 2 3
-    id : 0, pid : 12010 ... arguement_turn : 0
-    id : 0, pid : 12010 ... arguement_turn : 0
-    id : 0, pid : 12010 ... arguement_turn : 0
-    id : 0, pid : 12010 ... arguement_turn : 0
-    id : 0, pid : 12010 ... arguement_turn : 0
-    id : 1, pid : 12011 ... arguement_turn : 1
-    id : 1, pid : 12011 ... arguement_turn : 1
-    id : 1, pid : 12011 ... arguement_turn : 1
-    id : 1, pid : 12011 ... arguement_turn : 1
-    id : 1, pid : 12011 ... arguement_turn : 1
-    id : 2, pid : 12012 ... arguement_turn : 2
-    id : 2, pid : 12012 ... arguement_turn : 2
-    id : 2, pid : 12012 ... arguement_turn : 2
-    id : 2, pid : 12012 ... arguement_turn : 2
-    id : 2, pid : 12012 ... arguement_turn : 2
-    id : 3, pid : 12013 ... arguement_turn : 3
-    id : 3, pid : 12013 ... arguement_turn : 3
-    id : 3, pid : 12013 ... arguement_turn : 3
-    id : 3, pid : 12013 ... arguement_turn : 3
-    id : 3, pid : 12013 ... arguement_turn : 3
-    ```
-
-  ```c
-  void do_child(int id, int argument_turn){
-  
-      char buffer = 'a';
-      char fifo[3][6] = {"p3_f1", "p3_f2", "p3_f3"};
-      int i, fd[3];
-  
-      fd[0] = open(fifo[0], O_RDWR);
-      fd[1] = open(fifo[1], O_RDWR);
-      fd[2] = open(fifo[2], O_RDWR);
-  
-      if(argument_turn > 0){
-          read(fd[argument_turn-1], &buffer, 1);
-      }
-  
-      for(i=0;i<5;i++){
-          sleep(1);
-          printf("id : %d, pid : %d ... arguement_turn : %d\n", id, getpid(), argument_turn);
-      }
-  
-      if(argument_turn < 3){
-          write(fd[argument_turn], &buffer, 1);
-      }
-  
-      exit(0);
-  }
-  
-  int main(int argc, char **argv){
-  
-      char fifo[3][6] = {"p3_f1", "p3_f2", "p3_f3"};
-      int i, fd[3], status;
-      pid_t pid[4];
-  
-      for(i=0;i<3;i++){
+      for(i=0;i<6;i++){
           mkfifo(fifo[i], 0600);
       }
   
-      for(i=0;i<4;i++){
-          pid[i] =fork();
-          if(pid[i] == 0){
-              do_child(i, atoi(argv[i+1]));
-          }
+      fd[0] = open(fifo[0], O_RDONLY);
+      fd[1] = open(fifo[1], O_RDONLY);
+      fd[2] = open(fifo[2], O_RDONLY);
+  
+      fd[3] = open(fifo[3], O_WRONLY);
+      fd[4] = open(fifo[4], O_WRONLY);
+      fd[5] = open(fifo[5], O_WRONLY);
+  
+      FD_ZERO(&master);
+  
+      for (i=0;i<3;i++){
+          FD_SET(fd[i], &master);
       }
   
-      for(i=0;i<4;i++){
-          wait(&status);
+      while (set=master, (select_check = select(fd[2]+1, &set, NULL, NULL, NULL)) > 0) {
+          for (i=0;i<3;i++) {
+              if (FD_ISSET(fd[i], &set)) {
+                  if(nread = read(fd[i], &in, sizeof(int)) > 0){
+                      write(1, &in, sizeof(int));
+                      write(fd[i+3], &in, sizeof(int));
+                  }
+                  else if(select_check == 3 && nread == 0)
+                      return 0;
+              }
+          }
+      }
+      exit(0);
+  }
+  ```
+
+  - p11-2client.c
+
+  ```c
+  int main(int argc, char **argv){
+      char fifo[6][15] = {"p2_f1", "p2_f2", "p2_f3", "p2_f4", "p2_f5", "p2_f6"};
+      int i, in, fd[6];
+      int id = atoi(argv[1]);
+  
+      fd[id] = open(fifo[id], O_WRONLY);
+      fd[id+3] = open(fifo[id+3], O_RDONLY);
+  
+      read(0, &in, sizeof(int));
+      write(fd[id], &in, sizeof(int));
+  
+      read(fd[id+3], &in, sizeof(int));
+      for(i=0;i<5;i++){
+          sleep(1);
+          write(1, &in, sizeof(int));
       }
   
       exit(0);
   }
   ```
+
+- p11-3
+  네 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 출력하는 프로그램을 작성합니다. 이 프로그램은 main() 함수의 arguments로 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 입력받습니다. 프로그램이 시작되면, 순서대로 자신의 프로세스 id를 출력합니다. 동기화 작업은 fifo를 사용하여 수행합니다.
+
+  - 네 개의 프로그램을 각각 실행한 후에 메인함수 인자로 0, 1, 2, 3을 주면 순서대로 실행 후 종료를 수행한다.
+
+  ```c
+  int main(int argc, char **argv){
+      char buf, f[3][3] = {"f1", "f2", "f3"};
+      int i, k ,in ,fd[2];
+  
+      for(i=0;i<3;i++){
+          mkfifo(f[i], 0600);
+      }
+  
+      k = atoi(argv[1]);
+  
+      if(k > 0)
+          fd[0] = open(f[k-1], O_RDONLY);
+      if(k < 3)
+          fd[1] = open(f[k], O_WRONLY);
+  
+      if(k > 0)
+          read(fd[0], &buf, 1);
+  
+      for(i=0;i<5;i++){
+          printf("pid : %d\n", getpid());
+          sleep(1);
+      }
+  
+      if(k < 3)
+          write(fd[1], "a", 1);
+  
+      exit(0);
+  }
+  ```
+
+## 20181114
+
+- p12-1.c
+  server process는 세 개의 client process들과 데이터를 주고받기 위해 message queue를 만듭니다. 각 client는 message queue를 이용하여, 표준 입력으로 입력된 정수를 server process에게 전송합니다. server process는 client process로부터 전송된 정수 값에 +8을 한 후, 해당 client에게 다시 보냅니다. client process는 돌려받은 정수 값을 표준 출력으로 출력합니다. client process는 정수 데이터의 입/출력 작업을 5회 반복 한 후 종료합니다. 각 client process는 main() 함수의 arguments로 자신의 id를 입력받습니다.
+
+  ```c
+  
+  ```
+
+- p12-2.c
+  네 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 출력하는 프로그램을 작성합니다. 이 프로그램은 main() 함수의 arguments로 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 입력받습니다. 프로그램이 시작되면, 순서대로 자신의 프로세스 id를 출력합니다. 동기화 작업은 message queue를 사용하여 수행합니다.
+
+  ```c
+  
+  ```
+
+- 
