@@ -662,7 +662,7 @@
   ```c
   int main(int argc, char **argv) {
       char fifo[6][15] = {"p2_f1", "p2_f2", "p2_f3", "p2_f4", "p2_f5", "p2_f6"};
-      int i, in, fd[6], select_check, nread;
+      int i, in, fd[6], select_check, nread, nread_count[3] = {0};
       fd_set set, master;
   
       for(i=0;i<6;i++){
@@ -686,14 +686,17 @@
       while (set=master, (select_check = select(fd[2]+1, &set, NULL, NULL, NULL)) > 0) {
           for (i=0;i<3;i++) {
               if (FD_ISSET(fd[i], &set)) {
-                  if(nread = read(fd[i], &in, sizeof(int)) > 0){
-                      write(1, &in, sizeof(int));
+                  if((nread = read(fd[i], &in, sizeof(int))) > 0){
+                      printf("received : %d\n", in);
+                      in = in + 8;
                       write(fd[i+3], &in, sizeof(int));
                   }
-                  else if(select_check == 3 && nread == 0)
-                      return 0;
+                  else if(nread == 0)
+                      nread_count[i] = 1;
               }
           }
+          if(nread_count[0] == 1 && nread_count[1] == 1 && nread_count[2] == 1)
+              return 0;
       }
       exit(0);
   }
@@ -710,15 +713,17 @@
       fd[id] = open(fifo[id], O_WRONLY);
       fd[id+3] = open(fifo[id+3], O_RDONLY);
   
-      read(0, &in, sizeof(int));
+      //read(0, &in, sizeof(int));
+      scanf("%d", &in);
       write(fd[id], &in, sizeof(int));
   
       read(fd[id+3], &in, sizeof(int));
+  
       for(i=0;i<5;i++){
           sleep(1);
-          write(1, &in, sizeof(int));
+          //write(1, &in, sizeof(int));
+          printf("received : %d\n", in);
       }
-  
       exit(0);
   }
   ```
@@ -761,18 +766,158 @@
 
 ## 20181114
 
-- p12-1.c
+- p12-1
   server process는 세 개의 client process들과 데이터를 주고받기 위해 message queue를 만듭니다. 각 client는 message queue를 이용하여, 표준 입력으로 입력된 정수를 server process에게 전송합니다. server process는 client process로부터 전송된 정수 값에 +8을 한 후, 해당 client에게 다시 보냅니다. client process는 돌려받은 정수 값을 표준 출력으로 출력합니다. client process는 정수 데이터의 입/출력 작업을 5회 반복 한 후 종료합니다. 각 client process는 main() 함수의 arguments로 자신의 id를 입력받습니다.
 
+  - p12-1server.c
+
   ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  #include <sys/mman.h>
+  #include <sys/ipc.h>
+  #include <sys/msg.h>
   
+  struct q_entry{
+      long mtype;
+      int data;
+  };
+  
+  int main(int argc, char **argv){
+      int qid, i, in;
+      struct q_entry msg;
+      key_t key;
+  
+      key = ftok("key", 1);
+      qid = msgget(key, 0600|IPC_CREAT);
+  
+      if(qid == -1){
+          perror("msgget");
+          exit(0);
+      }
+  
+      for(i=0;i<15;i++){
+          msgrcv(qid, &msg, sizeof(int), -3, 0);
+          msg.mtype += 3;
+          msg.data += 8;
+          msgsnd(qid, &msg, sizeof(int), 0);
+      }
+  
+      exit(0);
+  }
+  ```
+
+  - p12-1client.c
+
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  #include <sys/mman.h>
+  #include <sys/ipc.h>
+  #include <sys/msg.h>
+  
+  struct q_entry{
+      long mtype;
+      int data;
+  };
+  
+  int main(int argc, char **argv){
+      int qid, i, in, id;
+      struct q_entry msg;
+      key_t key;
+  
+      id = atoi(argv[1]);
+  
+      key = ftok("key", 1);
+      qid = msgget(key, 0600|IPC_CREAT);
+  
+      if(qid == -1){
+          perror("msgget");
+          exit(0);
+      }
+  
+      for(i=0;i<5;i++){
+          scanf("%d", &in);
+          msg.mtype = id;
+          msg.data = in;
+          msgsnd(qid, &msg, sizeof(int), 0);
+          msgrcv(qid, &msg, sizeof(int), id+3, 0);
+          printf("%d\n", msg.data);
+      }
+  
+      exit(0);
+  }
   ```
 
 - p12-2.c
   네 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 출력하는 프로그램을 작성합니다. 이 프로그램은 main() 함수의 arguments로 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 입력받습니다. 프로그램이 시작되면, 순서대로 자신의 프로세스 id를 출력합니다. 동기화 작업은 message queue를 사용하여 수행합니다.
 
   ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  #include <sys/mman.h>
+  #include <sys/ipc.h>
+  #include <sys/msg.h>
   
+  struct q_entry{
+      long mtype;
+      int data;
+  };
+  
+  int main(int argc, char **argv){
+  
+      int i, id, qid;
+      key_t key;
+      struct q_entry msg;
+  
+      key = ftok("key", 3);
+      qid = msgget(key, IPC_CREAT|0600);
+  
+      id = atoi(argv[1]);
+  
+      if(id > 1)
+          msgrcv(qid, &msg, sizeof(int), id, 0);
+  
+      for(i=0;i<5;i++){
+          sleep(1);
+          printf("id = %d pid = %d\n", id, getpid());
+      }
+  
+      if(id < 4){
+          msg.mtype = id + 1;
+          msg.data = id;
+          msgsnd(qid, &msg, sizeof(int), 0);
+      }
+  
+      exit(0);
+  }
   ```
 
 - 
