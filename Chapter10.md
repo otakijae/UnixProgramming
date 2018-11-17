@@ -159,9 +159,12 @@
     int main(int argc, char **argv){
         int qid, i, in;
         struct q_entry msg;
-        
-        qid = msgget(----, 0600|IPC_CREAT);
-        for(i=0i<3;i++){
+        key_t key;
+    
+        key = ftok("keyfile", 1);
+        qid = msgget(key, 0600|IPC_CREAT);
+    
+        for(i=0;i<3;i++){
             scanf("%d", &in);
             msg.mtype = i+1;
             msg.mnum = in;
@@ -195,7 +198,7 @@
   - msg_type
 
     - 0 : queue의 첫 message. 메세지 타입 상관없이 큐 제일 앞 메세지를 순서대로 받겠다.
-    - _ > 0 : 해당 값을 갖는 첫 message. 1적으면 1번 message, 100 적으면 100번 message 골라서 읽겠다. 여러개 있어도 여러개 한 번에 가져옴.
+    - _ > 0 : 해당 값을 갖는 첫 message. 1적으면 맨 앞 1번 message, 100 적으면 맨 앞 100번 message 골라서 읽겠다.
     - _ < 0 : mtype값이 절대값보다 작거나 같은 것 중 최소값을 갖는 첫 message. -5 적으면 5보다 작은 아무 메세지를 받겠다.
 
   - flags
@@ -226,19 +229,57 @@
         int mnum;
     };
     
-    int main(int argc, char *argv){
-        int qid, i;
+    int main(int argc, char **argv){
+        int qid, i, in;
         struct q_entry msg;
-        qid = msgget(----, 0600|IPC_CREAT);
+        key_t key;
+    
+        key = ftok("keyfile", 1);
+        qid = msgget(key, 0600|IPC_CREAT);
+    
         for(i=0;i<3;i++){
-            msgrcv(qid, &msg, sizeof(int), 2, 0);
+            msgrcv(qid, &msg, sizeof(int), -3, 0);
             printf("%d\n", msg.mnum);
         }
         exit(0);
     }
     ```
 
+    - 앞에 메세지 큐 생성 및 메세지 보내기 이후, 메시지 수신 예제 이후 메세지 큐 어떻게 되는지 확인한 결과.
+      10,11,12 세 개의 숫자를 입력받아서 12바이트에 3개의 QNUM이 있는 것 확인
+      -3으로 msg_type 설정했기 때문에 1,2,3 id의 숫자 아무거나 세 번 수신하는 코드라 3개의 메세지를 다 읽어왔고, 비어있는 메세지 큐 삭제한 과정
+
+    ```
+    sinjaeheoguiMBP:unix jaehyukshin$ ./example.out
+    10
+    11
+    12
+    sinjaeheoguiMBP:unix jaehyukshin$ ipcs -qo
+    IPC status from <running system> as of Sat Nov 17 13:21:50 KST 2018
+    T     ID     KEY        MODE       OWNER    GROUP CBYTES  QNUM
+    Message Queues:
+    q 131072 0xffffffff --rw------- jaehyukshin    staff     12      3
+    
+    sinjaeheoguiMBP:unix jaehyukshin$ ./example2.out
+    10
+    11
+    12
+    sinjaeheoguiMBP:unix jaehyukshin$ ipcs -qo
+    IPC status from <running system> as of Sat Nov 17 13:22:02 KST 2018
+    T     ID     KEY        MODE       OWNER    GROUP CBYTES  QNUM
+    Message Queues:
+    q 131072 0xffffffff --rw------- jaehyukshin    staff      0      0
+    
+    sinjaeheoguiMBP:unix jaehyukshin$ ipcrm -q 131072
+    sinjaeheoguiMBP:unix jaehyukshin$ ipcs -qo
+    IPC status from <running system> as of Sat Nov 17 13:22:18 KST 2018
+    T     ID     KEY        MODE       OWNER    GROUP CBYTES  QNUM
+    Message Queues:
+    
+    ```
+
     - 예2
+      메세지 큐에 있는 1,2,3 id의 데이터를 받은 후에 받은 값에 +8하여 id 4로 다시 메시지를 보냄. 그리고 다시 메시지 큐에 있는 id 4의 데이터를 가져와서 출력함. flag에 0 말고 -1을 넣으니까 IPC_NOWAIT이랑 비슷한 것 같음. 0을 넣으면 메시지가 들어올 때까지 계속 기다림.
 
     ```c
     struct q_entry{
@@ -247,14 +288,32 @@
     };
     
     int main(int argc, char **argv){
+        int qid, i, in;
         struct q_entry msg;
-        qid = msgget(----, 0600|IPC_CREAT);
-        while(msgrcv(qid, &msg, sizeof(int), 1, 0) > 0){ //0보다 작은 경우는 msg를 못 받은 경우
-            msg.mtype = 2;
+        key_t key;
+    
+        key = ftok("keyfile", 1);
+        qid = msgget(key, 0600|IPC_CREAT);
+    
+        if(qid == -1){
+            perror("msgget");
+            exit(0);
+        }
+    
+        while(msgrcv(qid, &msg, sizeof(int), -3, -1) > 0){
+            msg.mtype = 4;
             msg.mnum = msg.mnum + 8;
+            printf("%d\n", msg.mnum);
             msgsnd(qid, &msg, sizeof(int), 0);
         }
+    
+        for(i=0;i<3;i++){
+            msgrcv(qid, &msg, sizeof(int), 4, 0);
+            printf("%dth this is it : %d\n", i, msg.mnum);
+        }
+        exit(0);
     }
+    
     ```
 
 - 
