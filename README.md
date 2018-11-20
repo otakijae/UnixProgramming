@@ -655,9 +655,52 @@
 - p11-2
   server process는 세 개의 client process들과 데이터를 주고받기 위한 fifo를 만듭니다. 각 client는 미리 정해진 이름의 FIFO로 접속하여, 표준 입력으로 입력된 정수를 server process에게 전송합니다. server process는 client process로부터 전송된 정수 값에 +8을 한 후, 해당 client에게 다시 보냅니다. client process는 돌려받은 정수 값을 표준 출력으로 출력합니다. client process는 정수 데이터의 입/출력 작업을 5회 반복한 후 종료 합니다. client process로 부터의 입력을 blocking으로 기다리기 위해 select 문장을 사용합니다.
 
-  - 일단 fifo 6개를 만들어서 3개는 서버기준 select로 read하는데 사용, 3개는 읽은 후 다시 (8을 더해야하는데 더하면 이상한 값이 넘어가서 일단 안 더하고 바로 넘겨줌) write하는 것으로 설계
   - O_RDONLY 할 때, O_RDWR을 해야하는지 아니면 O_RDONLY를 해야하는지 아직 모르겠음
-  - p11-2server.c
+  - p11-2server.c (학교 리눅스 서버 버전). 
+    - 교수님 수업 시간때 말씀하신거 기반으로 작성한 코드라 이게 정답인듯함. client프로그램 전부 닫히면 전부 0을 return 하여 select는 3을 반환하게 되는거고, 근데 read한 값이 0바이트인 경우 모든 프로그램이 종료한 경우라고 하셔서 이렇게 작성했지만, 혹시나 잘못된 경우를 생각해봐야함
+
+  ```c
+  int main(int argc, char **argv) {
+      char fifo[6][15] = {"p2_f1", "p2_f2", "p2_f3", "p2_f4", "p2_f5", "p2_f6"};
+      int i, in, fd[6], select_check, nread, nread_count[3] = {0};
+      fd_set set, master;
+  
+      for(i=0;i<6;i++){
+          mkfifo(fifo[i], 0600);
+      }
+  
+      fd[0] = open(fifo[0], O_RDONLY);
+      fd[1] = open(fifo[1], O_RDONLY);
+      fd[2] = open(fifo[2], O_RDONLY);
+  
+      fd[3] = open(fifo[3], O_WRONLY);
+      fd[4] = open(fifo[4], O_WRONLY);
+      fd[5] = open(fifo[5], O_WRONLY);
+  
+      FD_ZERO(&master);
+  
+      for (i=0;i<3;i++){
+          FD_SET(fd[i], &master);
+      }
+  
+      while (set=master, (select_check = select(fd[2]+1, &set, NULL, NULL, NULL)) > 0) {
+          for (i=0;i<3;i++) {
+              if (FD_ISSET(fd[i], &set)) {
+                  if((nread = read(fd[i], &in, sizeof(int))) > 0){
+                      printf("received : %d\n", in);
+                      in = in + 8;
+                      write(fd[i+3], &in, sizeof(int));
+                  }
+                  else if(select_check == 3 && nread == 0)
+                      return 0;
+              }
+          }
+      }
+      exit(0);
+  }
+  ```
+
+  - p11-2server.c (내 컴퓨터 버전)
 
   ```c
   int main(int argc, char **argv) {
@@ -713,15 +756,11 @@
       fd[id] = open(fifo[id], O_WRONLY);
       fd[id+3] = open(fifo[id+3], O_RDONLY);
   
-      //read(0, &in, sizeof(int));
       scanf("%d", &in);
       write(fd[id], &in, sizeof(int));
-  
       read(fd[id+3], &in, sizeof(int));
-  
       for(i=0;i<5;i++){
           sleep(1);
-          //write(1, &in, sizeof(int));
           printf("received : %d\n", in);
       }
       exit(0);
@@ -811,6 +850,9 @@
           msg.data += 8;
           msgsnd(qid, &msg, sizeof(int), 0);
       }
+      
+      //메세지큐 기능 다 사용하고 삭제해주는 시스템 콜 추가
+      msgctl(qid, IPC_RMID, 0);
   
       exit(0);
   }
@@ -892,7 +934,6 @@
   };
   
   int main(int argc, char **argv){
-  
       int i, id, qid;
       key_t key;
       struct q_entry msg;
@@ -920,4 +961,92 @@
   }
   ```
 
-- 
+## 20181119
+
+- p13-1
+  메모리 매핑을 이용한 두 개의 프로그램을 작성합니다. 두 프로그램 모두 "data" 파일을 메모리 매핑합니다. 한 프로그램은 외부 입력을 읽어서 매핑된 메모리에 저장하는 작업을 3회 실행합니다. 다른 프로그램은 매핑된 메모리의 내용을 출력하는 작업을 3회 실행합니다. 두 프로그램 사이의 읽기-쓰기 동기화를 위해 semaphore를 사용합니다.
+
+  p13-1a.c
+
+  ```c
+  
+  ```
+
+  p13-1b.c
+
+  ```c
+  
+  ```
+
+- p13-2.c
+  네 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 출력하는 프로그램을 작성합니다. 이 프로그램은 main()함수의  arguments로 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 입력받습니다. 프로그램이 시작되면, 순서대로 자신의 프로세스 id를 출력합니다. 동기화 작업은 semaphore를 사용하여 수행합니다.
+
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  #include <sys/mman.h>
+  #include <sys/ipc.h>
+  #include <sys/msg.h>
+  #include <sys/sem.h>
+  
+  #define BUFSIZE 512
+  
+  int main(int argc, char **argv){
+      int i, id, pid, semid;
+      key_t key;
+      union semun arg;
+      ushort buf[3] = {0};
+      struct sembuf p_buf;
+  
+      id = atoi(argv[1]);
+      key = ftok("key", 3);
+      semid = semget(key, 3, 0600|IPC_CREAT|IPC_EXCL);
+  
+      if(semid == -1){
+          semid = semget(key, 3, 0600);
+      }
+      else{
+          arg.array = buf;
+          semctl(semid, 0, SETALL, arg);
+      }
+  
+      if(id>1){
+          p_buf.sem_num = id-2;
+          p_buf.sem_op = -1;
+          p_buf.sem_flg = 0;
+          semop(semid, &p_buf, 1);
+      }
+  
+      pid = getpid();
+  
+      for(i=0;i<5;i++){
+          sleep(1);
+          printf("pid : %d\n", pid);
+      }
+  
+      if(id<4){
+          p_buf.sem_num = id-1;
+          p_buf.sem_op = 1;
+          p_buf.sem_flg = 0;
+          semop(semid, &p_buf, 1);
+      }
+  
+      exit(0);
+  }
+  ```
+
+- p13-3.c
+  2번 문제에서 더 적은 semaphore를 사용하여 코드 작성하시오.
+
+  ```c
+  
+  ```

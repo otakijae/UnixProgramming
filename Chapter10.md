@@ -279,7 +279,7 @@
     ```
 
     - 예2
-      메세지 큐에 있는 1,2,3 id의 데이터를 받은 후에 받은 값에 +8하여 id 4로 다시 메시지를 보냄. 그리고 다시 메시지 큐에 있는 id 4의 데이터를 가져와서 출력함. flag에 0 말고 -1을 넣으니까 IPC_NOWAIT이랑 비슷한 것 같음. 0을 넣으면 메시지가 들어올 때까지 계속 기다림.
+      메세지 큐에 있는 1,2,3 id의 데이터를 받은 후에 받은 값에 +8하여 id 4로 다시 메시지를 보냄. 그리고 다시 메시지 큐에 있는 id 4의 데이터를 가져와서 출력함. flag에 0 말고 IPC_NOWAIT 넣으면 block을 안 해서 메세지 없으면 -1을 반환하면서 while문을 빠져나감. 근데 0을 넣으면 메시지를 다 읽은 후에도 메시지가 들어올 때까지 계속 기다림. (차이 주의할 것)
 
     ```c
     struct q_entry{
@@ -300,7 +300,7 @@
             exit(0);
         }
     
-        while(msgrcv(qid, &msg, sizeof(int), -3, -1) > 0){
+        while(msgrcv(qid, &msg, sizeof(int), -3, IPC_NOWAIT) > 0){
             msg.mtype = 4;
             msg.mnum = msg.mnum + 8;
             printf("%d\n", msg.mnum);
@@ -311,9 +311,12 @@
             msgrcv(qid, &msg, sizeof(int), 4, 0);
             printf("%dth this is it : %d\n", i, msg.mnum);
         }
+        
+        //메세지큐 기능 다 사용하고 삭제해주는 시스템 콜 사용
+        msgctl(qid, IPC_RMID, 0);
+        
         exit(0);
     }
-    
     ```
 
 
