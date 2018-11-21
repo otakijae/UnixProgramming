@@ -969,37 +969,91 @@
   p13-1a.c
 
   ```c
+  int main(int argc, char **argv){
+          int i, len = 0, status, fd, semid;
+          char *addr;
+          key_t key;
+          union semun arg;
+          struct sembuf p_buf;
   
+          key = ftok("key", 3);
+          semid = semget(key, 1, 0600|IPC_CREAT|IPC_EXCL);
+  
+          if(semid == -1){
+                  semid = semget(key, 1, 0600);
+          }
+          else{
+                  arg.val = 0;
+                  semctl(semid, 0, SETVAL, arg);
+          }
+  
+          fd = open("temp", O_RDWR | O_CREAT | O_TRUNC, 0600);
+          addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+  
+          ftruncate(fd, BUFSIZE);
+  
+          for(i=0;i<3;i++){
+                  len = len + read(0, addr + len, BUFSIZE);
+                  len = len-1;
+                  *(addr+len) = '\0';
+  
+                  p_buf.sem_num = 0;
+                  p_buf.sem_op = 1;
+                  p_buf.sem_flg = 0;
+                  semop(semid, &p_buf, 1);
+              
+                  printf("semval : %d\n", semctl(semid, 0, GETVAL, arg));
+          }
+  
+          exit(0);
+  }
   ```
 
   p13-1b.c
 
   ```c
+  int main(int argc, char **argv){
+          int i, len = 0, fd, semid;
+          char *addr;
+          key_t key;
+          union semun arg;
+          struct sembuf p_buf;
   
+          key = ftok("key", 3);
+          semid = semget(key, 1, 0600|IPC_CREAT|IPC_EXCL);
+  
+          if(semid == -1){
+                  semid = semget(key, 1, 0600);
+          }
+          else{
+                  arg.val = 0;
+                  semctl(semid, 0, SETVAL, arg);
+          }
+  
+          fd = open("temp", O_RDWR | O_CREAT, 0600);
+  
+          addr = mmap(NULL, BUFSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+  
+          for(i=0;i<3;i++){
+                  p_buf.sem_num = 0;
+                  p_buf.sem_op = -1;
+                  p_buf.sem_flg = 0;
+                  semop(semid, &p_buf, 1);
+  
+                  printf("semval : %d\n", semctl(semid, 0, GETVAL, arg));
+  
+                  len = len + write(1, addr + len, strlen(addr+len));
+                  write(1, "-------\n", 8);
+          }
+  
+          exit(0);
+  }
   ```
 
 - p13-2.c
   네 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 출력하는 프로그램을 작성합니다. 이 프로그램은 main()함수의  arguments로 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 입력받습니다. 프로그램이 시작되면, 순서대로 자신의 프로세스 id를 출력합니다. 동기화 작업은 semaphore를 사용하여 수행합니다.
 
   ```c
-  #include <stdio.h>
-  #include <sys/types.h>
-  #include <sys/stat.h>
-  #include <sys/wait.h>
-  #include <fcntl.h>
-  #include <unistd.h>
-  #include <dirent.h>
-  #include <string.h>
-  #include <time.h>
-  #include <ftw.h>
-  #include <stdlib.h>
-  #include <sys/mman.h>
-  #include <sys/ipc.h>
-  #include <sys/msg.h>
-  #include <sys/sem.h>
-  
-  #define BUFSIZE 512
-  
   int main(int argc, char **argv){
       int i, id, pid, semid;
       key_t key;
@@ -1048,5 +1102,142 @@
   2번 문제에서 더 적은 semaphore를 사용하여 코드 작성하시오.
 
   ```c
+  int main(int argc, char **argv){
+      int i, id, pid, semid;
+      key_t key;
+      union semun arg;
+      struct sembuf p_buf;
+  
+      id = atoi(argv[1]);
+      key = ftok("key", 1);
+      semid = semget(key, 3, 0600|IPC_CREAT|IPC_EXCL);
+  
+      if(semid == -1){
+          semid = semget(key, 3, 0600);
+      }
+      else{
+          arg.val = 0;
+          semctl(semid, 0, SETVAL, arg);
+      }
+  
+      if(id>1){
+          p_buf.sem_num = 0;
+          p_buf.sem_op = -id;
+          p_buf.sem_flg = 0;
+          semop(semid, &p_buf, 1);
+      }
+  
+      pid = getpid();
+  
+      for(i=0;i<5;i++){
+          sleep(1);
+          printf("pid : %d\n", pid);
+      }
+  
+      if(id<4){
+          p_buf.sem_num = 0;
+          p_buf.sem_op = id + 1;
+          p_buf.sem_flg = 0;
+          semop(semid, &p_buf, 1);
+      }
+  
+      exit(0);
+  }
+  ```
+
+- p13-4.c
+  세 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 씩 3번 출력하는 프로그램을 작성합니다. 이 프로그램은 main() 함수의 arguments로 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 입력받습니다. 프로그램이 시작되면, 1 → 2 → 3 → 1 → 2 → 3 → 1 → 2 → 3 순서대로 자신의 프로세스 id를 출력합니다.
+
+  - (a) 동기화 작업은 message queue를 사용하여 수행 합니다.
+
+  ```c
   
   ```
+
+  - (b) 동기화 작업은 semaphore를 사용하여 수행 합니다.
+
+  ```c
+  
+  ```
+
+## 20181121
+
+- p14-1
+  공유 메모리를 이용하는 두 개의 프로그램을 작성합니다. 프로그램 A는 scanf() 명령으로 10개의 정수를 입력 받아 공유 메모리에 저장 하는 작업을 10회 반복 실행합니다. 프로그램 B는 공유 메모리 에 저장된 내용을 printf() 명령으로 출력하는 작업을 10회 반복 실행합니다. 이때, 프로그램 B는 프로 그램 A가 정수를 쓴 후 읽어야 합니다. 이러한 동기화 작업은 semaphore를 사용합니다.
+
+  ```c
+  
+  ```
+
+- p14-2
+  1번의 프로그램을 공유 메모리 자체 정보에 의해 동기화 작업이 이루어지도록 수정 합니다.
+  semaphore를 사용하지 않기 때문에 busy waiting으로 block을 할 수밖에 없어서, 비효율적인 프로그램이 된다.
+
+  - write
+
+    ```c
+    struct databuf{
+        int flag;
+        int data;
+    };
+    
+    int main(int argc, char **argv){
+        key_t key;
+        int shmid, i, n;
+        struct databuf *buf;
+    
+        key = ftok("shmfile", 1);
+        shmid = shmget(key, 10* sizeof(struct databuf), IPC_CREAT|0600);
+    
+        buf = (struct databuf *)shmat(shmid, 0, 0);
+    
+        for(i=0;i<10;i++){
+            scanf("%d", &(buf+i)->data);
+            (buf+i)->flag = 1;
+        }
+    
+        shmdt(buf);
+        shmctl(shmid, IPC_RMID, 0);
+    
+        return 0;
+    }
+    ```
+
+  - read
+
+    ```c
+    struct databuf{
+        int flag;
+        int data;
+    };
+    
+    int main(int argc, char **argv){
+        key_t key;
+        int shmid, i, n;
+        struct databuf *buf;
+    
+        key = ftok("shmfile", 1);
+        shmid = shmget(key, 10* sizeof(struct databuf), IPC_CREAT|0600);
+    
+        buf = (struct databuf *)shmat(shmid, 0, 0);
+    
+        for(i=0;i<10;i++){
+            while((buf+i)->flag == 0);
+            printf("%d\n", (buf+i)->data);
+        }
+    
+        shmdt(buf);
+        shmctl(shmid, IPC_RMID, 0);
+    
+        return 0;
+    }
+    ```
+
+- p14-3
+  Server process는 세 개의 client process들과 데이터를 주고받기 위해 공유 메모리를 만듭니다. 각 client는 공유 메모리 공간을 이용하여 표준 입력으로 입력된 정수를 server process에게 전송합니다. Server process는 client process로부터 전송된 정수 값에 +8을 한 후, 해당 client에게 다시 보냅니다. Client process는 돌려받은 정수 값을 표준 출력으로 출력합니다. Client process는 정수 데이터의 입/출력 작업을 5회 반복 한 후 종료합니다.
+
+  ```c
+  
+  ```
+
+- 
