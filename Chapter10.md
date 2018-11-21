@@ -80,6 +80,8 @@
 
   - ipc 삭제 ```$ipcrm -m shmid or -q msqid or -s semid```
 
+## Message Queue
+
 - Message passing
 
   - message queue를 통한 message 전달
@@ -319,9 +321,6 @@
     }
     ```
 
-
-## 20181119
-
 - msgctl
 
   - Fifo vs msg queue 가장 큰 차이
@@ -360,6 +359,9 @@
     time_t msg_rtime;			//last receipt time
     time_t msg_ctime;			//last s/r time
     ```
+
+
+## Semaphore
 
 - semaphore
 
@@ -499,6 +501,8 @@
 
     - ### 세마포 있으면 아예 만들지 말고, 세마포 없을 때만 만들라는 뜻인데 왜 이 옵션이 필요한지에 대해 잘 생각해보기
 
+    - ==> 세마포와 공유메모리는 초기화가 필수인데, 한꺼번에 여러 프로세스들이 초기화를 시도하면 얽히기 때문에 (한 세마포, 공유 메모리를 같이 사용하는 것이기 때문에) 딱 한 프로세스만 초기화할 수 있게 해주기 위해서 IPC_EXCL 옵션을 사용함
+
   - semaphore 집합으로 만들고 초기값 설정하기
 
     ```c
@@ -617,5 +621,112 @@
             exit(0);
     }
     ```
+
+  - 책에서 찾은 예제
+
+    ```c
+    #include <stdio.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/wait.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <dirent.h>
+    #include <string.h>
+    #include <time.h>
+    #include <ftw.h>
+    #include <stdlib.h>
+    #include <sys/mman.h>
+    #include <sys/ipc.h>
+    #include <sys/msg.h>
+    #include <sys/sem.h>
+    #include <sys/shm.h>
+    
+    #define BUFSIZE 512
+    
+    int initsem(key_t semkey){
+        union semun arg;
+        int status = 0, semid;
+    
+        semid = semget(semkey, 1, IPC_CREAT|IPC_EXCL|0600);
+        if(semid == -1){
+            semid = semget(semkey, 1, 0);
+        }
+        else{
+            arg.val = 1;
+            status = semctl(semid, 0, SETVAL, arg);
+        }
+    
+        if(semid == -1 || status == -1){
+            perror("initsem");
+            return -1;
+        }
+    
+        return semid;
+    }
+    
+    int semlock(int semid){
+        struct sembuf buf;
+    
+        buf.sem_num = 0;
+        buf.sem_op = -1;
+        buf.sem_flg = 0;
+    
+        if(semop(semid, &buf, 1) == -1){
+            perror("semlock failed");
+            exit(1);
+        }
+        return 0;
+    }
+    
+    int semunlock(int semid){
+        struct sembuf buf;
+    
+        buf.sem_num = 0;
+        buf.sem_op = 1;
+        buf.sem_flg = 0;
+    
+        if(semop(semid, &buf, 1) == -1){
+            perror("semunlock failed");
+            exit(1);
+        }
+        return 0;
+    }
+    
+    void semhandle(){
+        int semid;
+        pid_t pid = getpid();
+        key_t key;
+    
+        key = ftok("key", 1);
+    
+        if((semid = initsem(key)) < 0)
+            exit(1);
+    
+        semlock(semid);
+        printf("LOCK : Process %d\n", (int)pid);
+        printf("***LOCK MODE : Critical Section\n");
+        sleep(1);
+        printf("UNLOCK : Process %d\n", (int)pid);
+        semunlock(semid);
+    
+        exit(0);
+    }
+    
+    int main(int argc, char **argv){
+        int i;
+        for(i=0;i<3;i++){
+            if(fork()==0)
+                semhandle();
+        }
+    
+        for(i=0;i<3;i++)
+            wait(0);
+    
+        exit(0);
+    }
+    ```
+
+## Shared Memory
 
 - 
