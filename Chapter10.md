@@ -729,4 +729,132 @@
 
 ## Shared Memory
 
-- 
+- 둘 이상의 프로세스가 물리적 메모리의 일부를 공유
+
+  - MemoryMapping의 경우, 수정 내용이 바로 적용되지 않고 OS가 가능한 타이밍에 수정을 하기 때문에 시간차가 생길 수 있다. 동기화가 안 된다는 단점이 있는데
+  - shared memory는 두 프로세스가 같이 사용하는 공간이라 전혀 delay없이 상대편이 수정내용을 받을 수 있음
+
+- OS의 간섭없이 사용가능하기 때문에, 가장 효율적인 IPC 기법이다
+
+- shmget 시스템 호출
+
+  - 사용법
+
+    ```c
+    #include <sys/types.h>
+    #include <sys/ipc.h>
+    #include <sys/shm.h>
+    
+    int shmget(key_t key, size_t size, int permflag);
+    ```
+
+  - key : 공유 메모리 영역의 identifier
+
+  - size : 공유 메모리 영역의 최소 크기
+
+  - permflag : access permission|IPC_CREAT|IPC_EXCL
+
+    - 딱 한사람만 초기화할 수 있게 IPC_EXCL 옵션을 붙여줌. 초기화할 때, 하나의 공유 메모리 생성하여 같이 사용하는 것이기 때문에, 얽히지 않게 하기위해서 사용
+
+  - return 값 : 공유 메모리 영역의 identifier
+
+  - 공유 메모리 생성 예제
+
+  ```c
+  //512byte의 문자를 저장할 공유 메모리 생성
+  shmid1 = shmget(key, 512, 0600|IPC_CREAT);
+  
+  //10개의 정수를 저장할 공유 메모리 생성
+  shmid2 = shmget(key, 10*sizeof(int), 0600|IPC_CREAT);
+  
+  //struct databuf의 데이터 5개를 저장할 공유 메모리
+  shmid3 = shmget(key, 5*sizeof(struct databuf), 0600|IPC_CREAT);
+  ```
+
+- shmat 시스템 호출
+
+  - shmget 호출에 의해 할당된 메모리 영역을 자신의 논리적 자료 공간에 부착
+
+  - 만든 shared memory를 내 주소공간에 저장해서, 나에게 주소를 return해주기 때문에 배열처럼 사용 가능
+
+  - 사용법
+
+    ```c
+    #include <sys/shm.h>
+    
+    int *shmat(int shmid, const void *daddr, int shmflag);
+    ```
+
+  - shmid : 공유 메모리 identifier
+
+  - daddr : process address space 내의 부착 위치, NULL인 경우 시스템이 위치 결정. 그래서 그냥 NULL이나 0으로 설정하면 된다
+
+  - shmflag : SHM_RDONLY(공유 메모리에 대해 읽기만 가능). 근데 보통 읽기/쓰기 다 할거라 0 적으면 둘 다 하는거라 NULL이나 0으로 설정하면 된다
+
+  - return 값 : process내의 유효주소, 실패시 (void*) -1
+
+- shmdt 시스템 호출
+
+  - 공유 메모리 영역을 프로세스의 논리적 주소 공간으로부터 떼어낸다
+
+  - 사용법
+
+    ```c
+    int shmdt(memptr);
+    ```
+
+  - memptr : 공유 메모리 영역에 대한 유효주소. shmat해서 받은 주소공간을 적어주면 된다.
+
+  - return 값 : 0 or -1
+
+  - shmat을 이용한 공유 메모리 부착 예제
+
+    ```c
+    //512byte의 문자를 저장할 공유 메모리 생성 후 부착
+    buf1 = (char *)shmat(shmid1, 0, 0);
+    
+    //10개의 정수를 저장할 공유 메모리 생성 후 부착
+    buf2 = (int *)shmat(shmid2, 0, 0);
+    
+    //struct databuf의 데이터 5개를 저장할 공유 메모리 생성 후 부착
+    buf3 = (struct databuf*)shmat(shmid3, 0, 0);
+    ```
+
+    - 원래 기본으로 정수 포인터를 return하기 때문에 형 변환을 해줘야한다.
+
+  - 공유 메모리 사용하는 예제
+
+    ```c
+    //표준 입력으로 읽은 문자열을 공유 메모리 공간에 저장 후 출력
+    n = read(0, buf1, 512);
+    write(1, buf1, n);
+    
+    //표준 입력으로 읽은 10개의 정수를 공유 메모리 공간에 저장 후 출력
+    for(i=0;i<10;i++)
+        scanf("%d", buf2+i);
+    for(i=0;i<10;i++)
+        printf("%d\n", *(buf2+i));
+    
+    //struct databuf의 데이터 중 d_nread에 10씩 더하기
+    for(i=0;i<5;i++)
+        (buf3+i)->d_nread += 10;
+    
+    //struct databuf의 데이터 중 d_nread와 d_buf 출력하기
+    for(i=0;i<5;i++)
+        printf("%d ... %s\n", (buf3+i)->d_nread, (buf3+i)->d_buf);
+    ```
+
+- shmctl 시스템 호출
+
+  - 사용법
+
+    ```c
+    #include <sys/shm.h>
+    
+    int shmctl(int shmid, int command, struct shmid_ds *shm_stat);
+    ```
+
+  - command
+
+    - IPC_STAT : 정보 확인 기능. 3번째 인자에 저장
+    - IPC_RMID : 삭제 기능. 3번째 인자는 0으로 설정하고 사용.
