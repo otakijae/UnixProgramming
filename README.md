@@ -969,6 +969,12 @@
   p13-1a.c
 
   ```c
+  union semun{
+          int val;
+          struct semid_ds *buf;
+          ushort *array;
+  };
+  
   int main(int argc, char **argv){
           int i, len = 0, status, fd, semid;
           char *addr;
@@ -1012,6 +1018,12 @@
   p13-1b.c
 
   ```c
+  union semun{
+          int val;
+          struct semid_ds *buf;
+          ushort *array;
+  };
+  
   int main(int argc, char **argv){
           int i, len = 0, fd, semid;
           char *addr;
@@ -1054,6 +1066,12 @@
   네 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 출력하는 프로그램을 작성합니다. 이 프로그램은 main()함수의  arguments로 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 입력받습니다. 프로그램이 시작되면, 순서대로 자신의 프로세스 id를 출력합니다. 동기화 작업은 semaphore를 사용하여 수행합니다.
 
   ```c
+  union semun{
+      int val;
+      struct semid_ds *buf;
+      ushort *array;
+  };
+  
   int main(int argc, char **argv){
       int i, id, pid, semid;
       key_t key;
@@ -1102,6 +1120,12 @@
   2번 문제에서 더 적은 semaphore를 사용하여 코드 작성하시오.
 
   ```c
+  union semun{
+      int val;
+      struct semid_ds *buf;
+      ushort *array;
+  };
+  
   int main(int argc, char **argv){
       int i, id, pid, semid;
       key_t key;
@@ -1165,9 +1189,105 @@
 - p14-1
   공유 메모리를 이용하는 두 개의 프로그램을 작성합니다. 프로그램 A는 scanf() 명령으로 10개의 정수를 입력 받아 공유 메모리에 저장 하는 작업을 10회 반복 실행합니다. 프로그램 B는 공유 메모리 에 저장된 내용을 printf() 명령으로 출력하는 작업을 10회 반복 실행합니다. 이때, 프로그램 B는 프로 그램 A가 정수를 쓴 후 읽어야 합니다. 이러한 동기화 작업은 semaphore를 사용합니다.
 
-  ```c
-  
-  ```
+  - write
+
+    ```c
+    union semun{
+            int val;
+            struct semid_ds *buf;
+            ushort *array;
+    };
+    
+    int main(int argc, char **argv){
+        key_t semkey, shmkey;
+        int semid, shmid, i, n;
+        int *buf;
+        union semun arg;
+        struct sembuf p_buf;
+        
+        semkey = ftok("semkey", 3);
+        semid = semget(semkey, 1, 0600|IPC_CREAT|IPC_EXCL);
+        
+        if(semid == -1){
+            semid = semget(semkey, 1, 0600);
+        }
+        else{
+            arg.val = 0;
+            semctl(semid, 0, SETVAL, arg);
+        }
+    
+        shmkey = ftok("shmfile", 1);
+        shmid = shmget(shmkey, 10*sizeof(int), IPC_CREAT|0600);
+    
+        buf = (int *)shmat(shmid, 0, 0);
+    
+        for(i=0;i<10;i++){
+            scanf("%d", (buf+i));
+            
+            //signal
+            p_buf.sem_num = 0;
+            p_buf.sem_op = 1;
+            p_buf.sem_flg = 0;
+            semop(semid, &p_buf, 1);
+        }
+    
+        semctl(semid, IPC_RMID, 0);
+        shmdt(buf);
+        shmctl(shmid, IPC_RMID, 0);
+    
+        return 0;
+    }
+    ```
+
+  - read
+
+    ```c
+    union semun{
+            int val;
+            struct semid_ds *buf;
+            ushort *array;
+    };
+    
+    int main(int argc, char **argv){
+        key_t semkey, shmkey;
+        int semid, shmid, i, n;
+        int *buf;
+        union semun arg;
+        struct sembuf p_buf;
+        
+        semkey = ftok("semkey", 3);
+        semid = semget(semkey, 1, 0600|IPC_CREAT|IPC_EXCL);
+        
+        if(semid == -1){
+            semid = semget(semkey, 1, 0600);
+        }
+        else{
+            arg.val = 0;
+            semctl(semid, 0, SETVAL, arg);
+        }
+    
+        shmkey = ftok("shmfile", 1);
+        shmid = shmget(shmkey, 10*sizeof(int), IPC_CREAT|0600);
+    
+        buf = (int *)shmat(shmid, 0, 0);
+    
+        for(i=0;i<10;i++){
+            //wait
+            p_buf.sem_num = 0;
+            p_buf.sem_op = -1;
+            p_buf.sem_flg = 0;
+            semop(semid, &p_buf, 1);
+            
+            printf("%d\n", *(buf+i));
+        }
+    
+        semctl(semid, IPC_RMID, 0);
+        shmdt(buf);
+        shmctl(shmid, IPC_RMID, 0);
+    
+        return 0;
+    }
+    ```
 
 - p14-2
   1번의 프로그램을 공유 메모리 자체 정보에 의해 동기화 작업이 이루어지도록 수정 합니다.
@@ -1240,4 +1360,134 @@
   
   ```
 
-- 
+
+## 20181126
+
+- p15-1.c
+  Parent process는 표준 입력으로 정수를 하나 입력 받아, “data" 파일에 쓴 후, 세 개의 child process들을 만듭니다. 각 child process는 "data" 파일의 정수 값을 읽고 5초간 기다렸다 +10 한 값을 씁니다. 세 child의 덧셈이 정확히 되도록 file locking을 써서 동기화를 합니다.
+
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  #include <sys/mman.h>
+  #include <sys/ipc.h>
+  #include <sys/msg.h>
+  #include <sys/sem.h>
+  #include <sys/shm.h>
+  
+  #define BUFSIZE 512
+  
+  void do_child(int fd){
+      int in;
+      struct flock lock;
+      
+      lock.l_whence = SEEK_SET;
+      lock.l_start = 0;
+      lock.l_len = 4;
+      lock.l_type = F_WRLCK;
+      fcntl(fd, F_SETLKW, &lock);
+      
+      lseek(fd, 0, SEEK_SET);
+      read(fd, &in, sizeof(int));
+      sleep(2);
+      
+      in = in + 10;
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &in, sizeof(int));
+      
+      lock.l_type = F_UNLCK;
+      fcntl(fd, F_SETLK, &lock);
+      
+      exit(0);
+  }
+  
+  int main(int argc, char **argv){
+      int fd, i, num;
+      struct flock lock;
+      pid_t pid[3];
+      
+      fd=open("data", O_RDWR|O_CREAT, 0600);
+      scanf("%d", &num);
+      write(fd, &num, sizeof(int));
+  
+      for(i=0;i<3;i++){
+          pid[i] = fork();
+          if(pid[i] == 0){
+              do_child(fd);
+          }
+          else{
+              wait(0);
+          }
+      }
+      
+      lseek(fd, 0, SEEK_SET);
+      read(fd, &num, sizeof(int));
+      printf("%d\n", num);
+      
+      return 0;
+  }
+  ```
+
+- p15-2.c
+  네 개의 프로세스가 동기화를 하며 자신의 프로세스 id를 5회 출력하는 프로그램을 작성 합니다. 이 프로그램은 "turn1" file을 이용하여 동기화에 참여하는 전체 프로세스 중 자신의 출력 순서를 결정 합니 다. 둘 이상의 프로세스가 동시에 자신의 id를 출력하지 않도록 하는 동기화 작업은 file locking을 사용 합니다. 네 프로세스의 출력 순서가 정해져 있지 않습니다. 동시에 출력을 하지 않도록만 하면 됩니다.
+
+  - 되긴 잘되는데, 아직 완벽한건 아닌 것 같음
+
+  ```c
+  #include <stdio.h>
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/wait.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <dirent.h>
+  #include <string.h>
+  #include <time.h>
+  #include <ftw.h>
+  #include <stdlib.h>
+  #include <sys/mman.h>
+  #include <sys/ipc.h>
+  #include <sys/msg.h>
+  #include <sys/sem.h>
+  #include <sys/shm.h>
+  
+  #define BUFSIZE 512
+  
+  int main(int argc, char **argv){
+      int fd, i, in = 5;
+      struct flock lock;
+      
+      fd=open("turn1", O_RDWR|O_CREAT, 0600);
+      
+      lock.l_whence = SEEK_SET;
+      lock.l_start = 0;
+      lock.l_len = 4;
+      lock.l_type = F_WRLCK;
+      fcntl(fd, F_SETLKW, &lock);
+      
+      lseek(fd, 0, SEEK_SET);
+      read(fd, &in, sizeof(int));
+      
+      for(i=0;i<5;i++){
+          sleep(1);
+          printf("pid = %d\n", getpid());
+      }
+      
+      lock.l_type = F_UNLCK;
+      fcntl(fd, F_SETLK, &lock);
+      
+      return 0;
+  }
+  ```
+
+## asdf
+
