@@ -858,3 +858,129 @@
 
     - IPC_STAT : 정보 확인 기능. 3번째 인자에 저장
     - IPC_RMID : 삭제 기능. 3번째 인자는 0으로 설정하고 사용.
+
+## LOCK / UNLOCK
+
+- record locking
+
+  - 필요성
+
+    - 10개의 숫자 입력을 받아서 각 자리 숫자에 +10을 해서 값을 변경하는 프로그램. 2개 프로세스로 실행함.
+
+    - 두 개의 프로세스로 실행해서 맨 앞에 값이 80으로 돼있으면 한 번 +10하고 나중에 한 번 +10해서 100으로 값이 변경돼있어야하는데, 먼저 더한 프로세스 작업이 느려서 90으로 변경한 후에 다른 프로세스가 값을 가져간게 아니라 변경하기 전인 80일때 값을 다른 프로세스가 가져가버리게 되면 2번 작업을 했는데 최종 결과가 90으로 설정되는 문제가 생길 수 있음.
+
+    - 그래서 lock을 해줘서 한 사람이 읽어간 동안 다른 사람은 blocking이 되고, 작업 끝난 후 lock이 풀리면 값을 가져갈 수 있음.
+
+    - 계좌 관리하는 시스템 같은 경우 중요한 문제
+
+    - 잘못된 코드. Lock/unlock 사용하지 않은 코드
+
+      ```c
+      fd = open("data1", O_RDWR|O_CREAT, 0600);
+      
+      for(i=0;i<10;i++){
+          read(fd, &num, sizeof(int));
+          num = num + 10;
+          sleep(1);
+          lseek(fd, -sizeof(int), SEEK_CUR);
+          write(fd, &num, sizeof(int));
+          printf("%d\n", num);
+      }
+      ```
+
+    - Locking / Unlocking 사용 예제
+
+      ```c
+      int main(void){
+          int fd, i, num;
+          struct flock lock;
+          
+          fd=open("data1", O_RDWR|O_CREAT, 0600);
+          lock.l_whence=SEEK_CUR;
+          lock.l_len=sizeof(int);
+          
+          for (i=0; i<10; i++){
+              lock.l_type = F_WRLCK;
+              lock.l_start = 0;
+              fcntl(fd, F_SETLKW, &lock);
+              read(fd, &num, sizeof(int));
+              num=num + 10;
+              sleep(1);
+          }
+          
+          lseek(fd, -sizeof(int), SEEK_CUR);
+          write(fd, &num, sizeof(int));
+          lock.l_type = F_UNLCK;
+          lock.l_start = -sizeof(int);
+          fcntl(fd, F_SETLK, &lock);
+          lseek(fd, 0, SEEK_SET);
+          
+          for (i=0; i<10; i++){
+              read(fd, &num, sizeof(int));
+              printf("%d\n", num);
+          }
+          return 0;
+      }
+      ```
+
+    - 현재 x = 100;
+
+      |      P1      |      P2      |
+      | :----------: | :----------: |
+      |    read x    |    read x    |
+      | x = x + 100; | x = x + 200; |
+      |   write x    |   write x    |
+
+      - p1, p2 실행 후 x의 값은 제각각이다.
+
+  - Locking
+
+    - 특정 record에 대한 다른 프로세스의 읽기/쓰기 제한
+    - read lock : 읽기는 허용, 쓰기는 제한. 읽는건 괜찮고 데이터 변경만 안 된다. 읽기 작업 후 끝
+    - wirte lock : 읽기, 쓰기 모두 제한. 데이터 변경까지하면 이거로 설정하면 된다.
+
+  - Unlocking : 제한 해제
+
+  - 사용법
+
+    ```c
+    #include <fcntl.h>
+    
+    int fcntl(int filedes, int cmd, struct flock *ldata);
+    ```
+
+  - filedes : lock을 설정하려는 file의 descriptor
+
+    - read-lock : O_RDONLY / O_RDWR로 open된 파일에 한해서 적용 가능
+    - write-lock : O_WRONLY / O_RDWR로 open된 파일에 한해서 적용 가능
+
+  - cmd
+
+    - F_GETLK : lock 정보 얻기. 해당 정보는 세 번째 인수에 저장. 누가 lock걸었는지 정보 얻고 싶을 때 사용
+    - F_SETLK : non-blocking locking or unlocking. Lock 설정에 관한 자세한 정보는 세 번째 인수에 지정
+    - F_SETLKW : blocking locking. Lock 설정에 관한 자세한 정보는 세 번째 인수에 지정
+
+  - Struct flock *ldata 구조
+
+    - short l_type : lock의 type. F_RDLCK, F_WRLCK, F_UNLCK
+    - short l_whence : SEEK_SET, SEEK_CUR, SEEK_END
+    - off_t l_start : l_whence로부터의 변위로 표현된 locked record의 시작 위치
+    - off_t l_len : locked record의 길이. 정수는 4바이트, 문자는 임의의 길이바이트, 구조체는 원소 하나씩 지정
+    - pid_t l_pid : F_GETLK의 경우만 유효. 이 옵션 사용하면 pid 누가 파일에 lock을 걸었는지 확인 가능.
+
+- lock은 한 프로세스만 걸 수 있기 때문에 lock정보는 fork()에 의해 계승되지 않는다. child와 parent는 서로 다른 프로세스이기 때문임
+
+- 모든 lock은 프로세스 종료 시 자동으로 unlock 된다
+
+- 2개 이상의 lock을 걸려고 하면 교착 상태(deadlock)이 발생 가능하다
+
+  - 교착상태를 검색하기 위해서 fcntl 사용하면 F_SETLKW 명령에 대해 -1 return을 한다. 웬만하면 deadlock을 검색가능한거지, 모든 deadlock을 다 검색하는 것은 아니다.
+  - errno는 EDEADLK
+
+|         P1         |               P2                |
+| :----------------: | :-----------------------------: |
+|    1. A에 lock     |           2. B에 lock           |
+|    3. B에 lock     |           4. A에 lock           |
+| p2끝날때까지 block | 이때 fcntl 사용하면 -1 return함 |
+
+- 
