@@ -1175,7 +1175,52 @@
   - (a) 동기화 작업은 message queue를 사용하여 수행 합니다.
 
   ```c
+  struct q_entry{
+      long mtype;
+      int data;
+  };
   
+  int main(int argc, char **argv){
+      int i, j, id, qid;
+      key_t key;
+      struct q_entry msg;
+      
+      key = ftok("key", 3);
+      qid = msgget(key, IPC_CREAT|0600);
+      
+      id = atoi(argv[1]);
+      
+      for(i=4;i<7;i++){
+          //id = 1,2,3
+          //i = 4,5,6
+          if(id > 1)
+              msgrcv(qid, &msg, sizeof(int), id, 0);
+          
+          if(id == 1 && i > 4)
+              msgrcv(qid, &msg, sizeof(int), i, 0);
+          
+          for(j=0;j<3;j++){
+              sleep(1);
+              printf("id = %d pid = %d\n", id, getpid());
+          }
+          
+          if(id < 3){
+              msg.mtype = id + 1;
+              msg.data = id;
+              msgsnd(qid, &msg, sizeof(int), 0);
+          }
+          else if(id == 3 && i < 6){
+                  msg.mtype = i + 1;
+                  msg.data = id;
+                  msgsnd(qid, &msg, sizeof(int), 0);
+          }
+      }
+      
+      if(id == 3)
+          msgctl(qid, IPC_RMID, 0);
+      
+      exit(0);
+  }
   ```
 
   - (b) 동기화 작업은 semaphore를 사용하여 수행 합니다.
@@ -1356,10 +1401,131 @@
 - p14-3
   Server process는 세 개의 client process들과 데이터를 주고받기 위해 공유 메모리를 만듭니다. 각 client는 공유 메모리 공간을 이용하여 표준 입력으로 입력된 정수를 server process에게 전송합니다. Server process는 client process로부터 전송된 정수 값에 +8을 한 후, 해당 client에게 다시 보냅니다. Client process는 돌려받은 정수 값을 표준 출력으로 출력합니다. Client process는 정수 데이터의 입/출력 작업을 5회 반복 한 후 종료합니다.
 
-  ```c
-  
-  ```
+  - server랑 client 모두 busy waiting으로 기다리고 있음. 그래서 비효율적인 방법인데, shared memory는 생성할 때만 OS로 switching 일어나고 이후에는 context switching이 안 일어나고 프로세스에서 작업을 하기 때문에 그나마 효율적임
 
+  - 그래서 세마포를 사용해주면 더 효과적인 코드가 될 수 있음
+
+  - shmget할 때 EXCL 옵션을 안 붙이는 이유
+
+    - Flag 값을 사용하여 데이터가 왔나, 안 왔나를 확인하기 때문에 처음에 0으로 모두 다 설정돼있어야함. 0보다 큰 값이 들어가 있으면 안 됨
+    - shared memory를 만들면 기본으로 0으로 초기화되기 때문에 EXCL 옵션으로 다시 재설정을 해줄 필요가 없음
+    - 혹시나 1로 모든 flag 값을 설정하고 1이 아닌 값이 들어오게 되면 데이터가 온 것으로 간주를 할 것이라면 EXCL 옵션을 사용하여 모든 flag값을 재설정해줄 필요가 있음.
+
+  - server
+
+    ```c
+    #include <stdio.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/wait.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <dirent.h>
+    #include <string.h>
+    #include <time.h>
+    #include <ftw.h>
+    #include <stdlib.h>
+    #include <sys/mman.h>
+    #include <sys/ipc.h>
+    #include <sys/msg.h>
+    #include <sys/sem.h>
+    #include <sys/shm.h>
+    
+    #define BUFSIZE 512
+    
+    struct databuf{
+        int flag;
+        int data;
+    };
+    
+    int main(int argc, char **argv){
+        int i, j, shmid;
+        struct databuf *buf;
+        key_t shmkey;
+        
+        shmkey = ftok("shmkey", 3);
+        shmid = shmget(shmkey, 6*sizeof(struct databuf), 0600|IPC_CREAT);
+        buf = (struct databuf *)shmat(shmid, 0 ,0);
+        
+        for(i=0;i<15;i++){
+            for(j=0;;j=(j+1)%3)
+                if((buf+j)->flag == 1)
+                    break;
+            (buf+j+3)->data = (buf+j)->data + 8;
+            (buf+j)->flag = 0;
+            (buf+j+3)->flag = 1;
+        }
+        
+        shmctl(shmid, IPC_RMID, 0);
+    
+        exit(0);
+    }
+    ```
+
+  - client
+
+    ```c
+    #include <stdio.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <sys/wait.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <dirent.h>
+    #include <string.h>
+    #include <time.h>
+    #include <ftw.h>
+    #include <stdlib.h>
+    #include <sys/mman.h>
+    #include <sys/ipc.h>
+    #include <sys/msg.h>
+    #include <sys/sem.h>
+    #include <sys/shm.h>
+    
+    #define BUFSIZE 512
+    
+    struct databuf{
+        int flag;
+        int data;
+    };
+    
+    int main(int argc, char **argv){
+        int i, j, id, shmid;
+        struct databuf *buf;
+        key_t shmkey;
+        
+        id = atoi(argv[1]);
+        shmkey = ftok("shmkey", 3);
+        shmid = shmget(shmkey, 6*sizeof(struct databuf), 0600|IPC_CREAT);
+        buf = (struct databuf *)shmat(shmid, 0, 0);
+        
+        for(i=0;i<5;i++){
+            scanf("%d", &((buf+id)->data));
+            (buf+id)->flag = 1;
+            while((buf+id+3)->flag == 0);
+            printf("id : %d, input + 8 = %d\n", id, (buf+id+3)->data);
+            (buf+id+3)->flag = 0;
+        }
+    
+        exit(0);
+    }
+    ```
+
+- p14-4
+
+  p14-3 문제 busy waiting 사용하지 말고 세마포 사용하여 만들어보기
+
+  - server
+
+    ```c
+    
+    ```
+
+  - client
+
+    ```c
+    
+    ```
 
 ## 20181126
 
