@@ -863,4 +863,160 @@ int main(int argc, char **argv){
   }
   ```
 
+## 20181203 4-1 설계과제
+
+- 채팅 프로그램 먼저 한 번 코딩해봤음
+
+  - 일단 메세지 큐만 이용하여 채팅에 참여한 사람들에게 안 섞이고 잘 전달하게는 만들었는데,,,
+  - 실시간으로 채팅 참여한 인원을 파악해주는 기능을 더 손을 봐줘야함.
+
+  ```c
+  #define BUFSIZE 512
+  
+  int total_user, id_counter;
+  
+  struct q_entry{
+      long mtype;
+      int id_counter;
+      int total_user;
+  };
+  
+  struct q_data{
+      long mtype;
+      int id;
+      char mtext[BUFSIZE];
+  };
+  
+  void receiver(int id, int qid){
+      struct q_entry user_count;
+      struct q_data user_message;
+  
+      while(msgrcv(qid, &user_message, sizeof(struct q_data), 3, 0) > 0){
+          msgrcv(qid, &user_message, sizeof(struct q_data), 2, 0);
+  
+          if(user_message.id != id)
+              printf("[received] id : %d, message : %s\n", user_message.id, user_message.mtext);
+          else{
+              if ((strncmp(user_message.mtext, "talk_quit", 9) == 0) && (user_message.mtext[9] == '\n')) {
+                  exit(1);
+              }
+          }
+      }
+  
+      exit(1);
+  }
+  
+  void sender(int id, int qid){
+      int i;
+      char buffer[BUFSIZE];
+      struct q_entry user_count;
+      struct q_data user_message;
+  
+      while((read(0, buffer, BUFSIZE)) > 0) {
+          msgrcv(qid, &user_count, 2*sizeof(int), 1, IPC_NOWAIT);
+          user_count.mtype = 1;
+          id_counter = user_count.id_counter;
+          total_user = user_count.total_user;
+          msgsnd(qid, &user_count, 2*sizeof(int), 0);
+  
+          if(total_user == 1){
+              printf("talk_wait ... \n");
+          }
+  
+          if ((strncmp(buffer, "talk_quit", 9) == 0) && (buffer[9] == '\n')) {
+              for(i=0;i<total_user;i++){
+                  user_message.mtype = 3;
+                  user_message.id = id;
+                  strcpy(user_message.mtext, buffer);
+                  msgsnd(qid, &user_message, sizeof(struct q_data), 0);
+              }
+              for(i=0;i<total_user;i++){
+                  user_message.mtype = 2;
+                  user_message.id = id;
+                  strcpy(user_message.mtext, buffer);
+                  msgsnd(qid, &user_message, sizeof(struct q_data), 0);
+              }
+              return;
+          }
+  
+          for(i=0;i<total_user;i++){
+              user_message.mtype = 3;
+              user_message.id = id;
+              strcpy(user_message.mtext, buffer);
+              msgsnd(qid, &user_message, sizeof(struct q_data), 0);
+          }
+          for(i=0;i<total_user;i++){
+              user_message.mtype = 2;
+              user_message.id = id;
+              strcpy(user_message.mtext, buffer);
+              msgsnd(qid, &user_message, sizeof(struct q_data), 0);
+          }
+  
+          strcpy(buffer, "\0");
+      }
+  
+      return;
+  }
+  
+  int main(int argc, char **argv){
+      int i, id, qid;
+      char buffer[BUFSIZE];
+      key_t key;
+      pid_t pid;
+      struct q_entry user_count;
+      struct q_data user_message;
+  
+      key = ftok("keyfile", 1);
+      qid = msgget(key, 0600|IPC_CREAT);
+  
+      if(msgrcv(qid, &user_count, 2*sizeof(int), 1, IPC_NOWAIT) < 0){
+          id_counter = 1;
+          total_user = 1;
+  
+          user_count.mtype = 1;
+          user_count.id_counter = id_counter;
+          user_count.total_user = total_user;
+          id = id_counter;
+          msgsnd(qid, &user_count, 2*sizeof(int), 0);
+      }
+      else{
+          id_counter = user_count.id_counter + 1;
+          total_user = user_count.total_user + 1;
+  
+          user_count.mtype = 1;
+          user_count.id_counter = id_counter;
+          user_count.total_user = total_user;
+          id = id_counter;
+          msgsnd(qid, &user_count, 2*sizeof(int), 0);
+      }
+  
+      printf("id = %d\n", id);
+  
+      pid = fork();
+      if(pid == 0){
+          receiver(id, qid);
+      }
+      else{
+          waitpid(pid, 0, WNOHANG);
+          sender(id, qid);
+      }
+  
+      msgrcv(qid, &user_count, 2*sizeof(int), 1, IPC_NOWAIT);
+      id_counter = user_count.id_counter;
+      total_user = user_count.total_user;
+  
+      user_count.mtype = 1;
+      user_count.id_counter = id_counter;
+      user_count.total_user = total_user - 1;
+      msgsnd(qid, &user_count, 2*sizeof(int), 0);
+  
+      if(user_count.total_user == 0){
+          printf("no user exists\n");
+          msgctl(qid, IPC_RMID, 0);
+      }
+  
+      exit(1);
+  }
+  ```
+
 - 
