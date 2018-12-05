@@ -1027,9 +1027,10 @@ int main(int argc, char **argv){
   - mtype = 1인 경우는 채팅참가하고 있는 총인원 관리, id 카운터, message 카운터를 관리
   - mtype = 2인 경우는 메세지 데이터 전달 관리
   - mtype = 1을 제외한 2부터 메세지를 보내면 카운터를 하나씩 올려서 보낸 순서를 지정해주어 읽을 때 메세지 카운터 순서대로 읽게 하여 메세지가 섞이지 않게 설정함
-  - 문자열 제대로 전달되게 scanf로 수정
+  - 문자열 제대로 전달되게 gets(buffer)로 수정
 - 개선해야할 사항
   - 실시간으로 talk_wait 됐다가 풀릴 수 있게 만들기. 일단 참여 사용자 수가 하나만 있으면 block시켰다가 사람들어오면 저절로 풀릴 수 있게 만들기
+  - 아무것도 입력 안 하고 엔터치면 안 보내지거나 안 보여지게 설정
 
 ```c
 #define BUFSIZE 512
@@ -1072,7 +1073,7 @@ void sender(int id, int qid){
     struct q_entry user_count;
     struct q_data user_message;
 
-    while(scanf("%s", buffer) > 0) {
+    while(gets(buffer)) {
         msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT);
         user_count.mtype = 1;
         id_counter = user_count.id_counter;
