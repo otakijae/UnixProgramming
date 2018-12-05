@@ -865,6 +865,8 @@ int main(int argc, char **argv){
 
 ## 20181203 4-1 설계과제
 
+### 교수님이 의도하지 않은 방법으로 만든거
+
 - 채팅 프로그램 먼저 한 번 코딩해봤음
 
   - 일단 메세지 큐만 이용하여 채팅에 참여한 사람들에게 안 섞이고 잘 전달하게는 만들었는데,,,
@@ -1018,5 +1020,163 @@ int main(int argc, char **argv){
       exit(1);
   }
   ```
+
+### 교수님 피드백 받고 다시 만든 버전
+
+- 설계 방법
+  - mtype = 1인 경우는 채팅참가하고 있는 총인원 관리, id 카운터, message 카운터를 관리
+  - mtype = 2인 경우는 메세지 데이터 전달 관리
+  - mtype = 1을 제외한 2부터 메세지를 보내면 카운터를 하나씩 올려서 보낸 순서를 지정해주어 읽을 때 메세지 카운터 순서대로 읽게 하여 메세지가 섞이지 않게 설정함
+- 개선해야할 사항
+  - 아직 문자열 전달 제대로 안 됨. read말고 scanf 사용하면 될 것 같음
+
+```c
+#define BUFSIZE 512
+
+int id_counter, total_user, message_counter;
+
+struct q_entry{
+    long mtype;
+    int id_counter;
+    int total_user;
+    int message_counter;
+};
+
+struct q_data{
+    long mtype;
+    int id;
+    char mtext[BUFSIZE];
+};
+
+void receiver(int id, int qid){
+    struct q_entry user_count;
+    struct q_data user_message;
+
+    while(msgrcv(qid, &user_message, sizeof(struct q_data), message_counter, 0) > 0){
+        if(user_message.id != id)
+            printf("[received] id : %d, message : %s\n", user_message.id, user_message.mtext);
+        else{
+            if ((strncmp(user_message.mtext, "talk_quit", 9) == 0) && (user_message.mtext[9] == '\n')) {
+                exit(1);
+            }
+        }
+        message_counter++;
+    }
+    exit(1);
+}
+
+void sender(int id, int qid){
+    int i;
+    char buffer[BUFSIZE];
+    struct q_entry user_count;
+    struct q_data user_message;
+
+    while((read(0, buffer, BUFSIZE)) > 0) {
+        msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT);
+        user_count.mtype = 1;
+        id_counter = user_count.id_counter;
+        total_user = user_count.total_user;
+        message_counter = user_count.message_counter;
+
+        if(total_user == 1){
+            printf("talk_wait ... \n");
+        }
+
+        if ((strncmp(buffer, "talk_quit", 9) == 0) && (buffer[9] == '\n')) {
+            for(i=0;i<total_user;i++){
+                user_message.mtype = message_counter;
+                user_message.id = id;
+                strcpy(user_message.mtext, buffer);
+                msgsnd(qid, &user_message, sizeof(struct q_data), 0);
+            }
+
+            user_count.mtype = 1;
+            message_counter++;
+            user_count.message_counter = message_counter;
+            msgsnd(qid, &user_count, 3*sizeof(int), 0);
+
+            return;
+        }
+        else{
+            for(i=0;i<total_user;i++){
+                user_message.mtype = message_counter;
+                user_message.id = id;
+                strcpy(user_message.mtext, buffer);
+                msgsnd(qid, &user_message, sizeof(struct q_data), 0);
+            }
+
+            user_count.mtype = 1;
+            message_counter++;
+            user_count.message_counter = message_counter;
+            msgsnd(qid, &user_count, 3*sizeof(int), 0);
+        }
+    }
+    return;
+}
+
+int main(int argc, char **argv){
+    int id, qid;
+    key_t key;
+    pid_t pid;
+    struct q_entry user_count;
+
+    key = ftok("keyfile", 1);
+    qid = msgget(key, 0600|IPC_CREAT);
+
+    if(msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT) < 0){
+        id_counter = 1;
+        total_user = 1;
+        message_counter = 2;
+
+        user_count.mtype = 1;
+        user_count.id_counter = id_counter;
+        user_count.total_user = total_user;
+        user_count.message_counter = message_counter;
+        id = id_counter;
+        msgsnd(qid, &user_count, 3*sizeof(int), 0);
+    }
+    else{
+        id_counter = user_count.id_counter + 1;
+        total_user = user_count.total_user + 1;
+        message_counter = user_count.message_counter;
+
+        user_count.mtype = 1;
+        user_count.id_counter = id_counter;
+        user_count.total_user = total_user;
+        user_count.message_counter = message_counter;
+        id = id_counter;
+        msgsnd(qid, &user_count, 3*sizeof(int), 0);
+    }
+
+    printf("id = %d\n", id);
+
+    pid = fork();
+    if(pid == 0){
+        receiver(id, qid);
+    }
+    else{
+        waitpid(pid, 0, WNOHANG);
+        sender(id, qid);
+    }
+
+    msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT);
+    id_counter = user_count.id_counter;
+    total_user = user_count.total_user;
+    message_counter = user_count.message_counter;
+
+    user_count.mtype = 1;
+    user_count.id_counter = id_counter;
+    user_count.total_user = total_user - 1;
+    user_count.message_counter = message_counter;
+    msgsnd(qid, &user_count, 3*sizeof(int), 0);
+
+    if(user_count.total_user == 0){
+        printf("no user exists\n");
+        msgctl(qid, IPC_RMID, 0);
+    }
+
+    exit(1);
+}
+```
 
 - 
