@@ -1029,8 +1029,7 @@ int main(int argc, char **argv){
   - mtype = 1을 제외한 2부터 메세지를 보내면 카운터를 하나씩 올려서 보낸 순서를 지정해주어 읽을 때 메세지 카운터 순서대로 읽게 하여 메세지가 섞이지 않게 설정함
   - 문자열 제대로 전달되게 gets(buffer)로 수정
 - 개선해야할 사항
-  - 실시간으로 talk_wait 됐다가 풀릴 수 있게 만들기. 일단 참여 사용자 수가 하나만 있으면 block시켰다가 사람들어오면 저절로 풀릴 수 있게 만들기
-  - 아무것도 입력 안 하고 엔터치면 안 보내지거나 안 보여지게 설정
+  - talk_wait, talk_start 부분
 
 ```c
 #define BUFSIZE 512
@@ -1174,6 +1173,202 @@ int main(int argc, char **argv){
 
     if(user_count.total_user == 0){
         printf("no user exists\n");
+        msgctl(qid, IPC_RMID, 0);
+    }
+
+    exit(1);
+}
+```
+
+### 20181210 최종 설계도 기반 코드
+
+- talk_wait, talk_start 부분 수정
+  - 2명으로 됐을 때 talk_start를 메세지로 보내서 다른 한 쪽에서도 채팅이 가능한 것을 알 수 있게 설정. 3명 이상일 때는 혼자만 출력.
+- 개선사항
+  - 근데 talk_start 그대로 입력하게 되면 2명 째 talk_start라고 인식해서 전체 다 id 출력 없이 talk_start만 출력
+  - 설계도에 talk_start 메세지 보내는걸 작성 안 했음
+
+```c
+#define BUFSIZE 512
+
+int id_counter, total_user, message_counter;
+
+struct q_entry{
+    long mtype;
+    int id_counter;
+    int total_user;
+    int message_counter;
+};
+
+struct q_data{
+    long mtype;
+    int id;
+    char mtext[BUFSIZE];
+};
+
+void receiver(int id, int qid){
+    struct q_entry user_count;
+    struct q_data user_message;
+
+    while(msgrcv(qid, &user_message, sizeof(struct q_data), message_counter, 0) > 0){
+        if(user_message.id != id){
+            if(strcmp(user_message.mtext, "talk_start") == 0){
+                printf("talk_start\n");
+            }
+            else{
+                printf("%d : %s\n", user_message.id, user_message.mtext);
+            }
+        }
+        else{
+            if (strcmp(user_message.mtext, "talk_quit") == 0) {
+                exit(1);
+            }
+        }
+        message_counter++;
+    }
+    exit(1);
+}
+
+void sender(int id, int qid){
+    int i;
+    char buffer[BUFSIZE];
+    struct q_entry user_count;
+    struct q_data user_message;
+
+    while(gets(buffer)) {
+        msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT);
+        user_count.mtype = 1;
+        id_counter = user_count.id_counter;
+        total_user = user_count.total_user;
+        message_counter = user_count.message_counter;
+
+        if ((strcmp(buffer, "talk_quit") == 0)) {
+            for(i=0;i<total_user;i++){
+                user_message.mtype = message_counter;
+                user_message.id = id;
+                strcpy(user_message.mtext, buffer);
+                msgsnd(qid, &user_message, sizeof(struct q_data), 0);
+            }
+
+            user_count.mtype = 1;
+            message_counter++;
+            user_count.message_counter = message_counter;
+            msgsnd(qid, &user_count, 3*sizeof(int), 0);
+
+            return;
+        }
+        else{
+            if(total_user == 1){
+                printf("talk_wait ... \n");
+            }
+
+            for(i=0;i<total_user;i++){
+                user_message.mtype = message_counter;
+                user_message.id = id;
+                strcpy(user_message.mtext, buffer);
+                msgsnd(qid, &user_message, sizeof(struct q_data), 0);
+            }
+
+            user_count.mtype = 1;
+            message_counter++;
+            user_count.message_counter = message_counter;
+            msgsnd(qid, &user_count, 3*sizeof(int), 0);
+        }
+    }
+    return;
+}
+
+int main(int argc, char **argv){
+    int i, id, qid;
+    key_t key;
+    pid_t pid;
+    struct q_entry user_count;
+    struct q_data user_message;
+
+    key = ftok("keyfile", 1);
+    qid = msgget(key, 0600|IPC_CREAT);
+
+    //처음 들어오는 경우 메세지 큐에 메세지가 없는 상태이니까, msgrcv가 실패를 하게된다
+    if(msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT) < 0){
+        id_counter = 1;
+        total_user = 1;
+        message_counter = 2;
+
+        user_count.mtype = 1;
+        user_count.id_counter = id_counter;
+        user_count.total_user = total_user;
+        user_count.message_counter = message_counter;
+        id = id_counter;
+        msgsnd(qid, &user_count, 3*sizeof(int), 0);
+    }
+    else{
+        id_counter = user_count.id_counter + 1;
+        total_user = user_count.total_user + 1;
+        message_counter = user_count.message_counter;
+
+        user_count.mtype = 1;
+        user_count.id_counter = id_counter;
+        user_count.total_user = total_user;
+        user_count.message_counter = message_counter;
+        id = id_counter;
+        msgsnd(qid, &user_count, 3*sizeof(int), 0);
+    }
+
+    printf("id = %d\n", id);
+
+    if(total_user == 1){
+        printf("talk_wait ... \n");
+    }
+    else if(total_user == 2){
+        //본인 id의 receiver, sender 실행되고 있지 않아서 자기 자신은 미리 출력해줌
+        printf("talk_start\n");
+
+        msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT);
+        user_count.mtype = 1;
+        id_counter = user_count.id_counter;
+        total_user = user_count.total_user;
+        message_counter = user_count.message_counter;
+
+        user_message.mtype = message_counter;
+        user_message.id = id;
+        strcpy(user_message.mtext, "talk_start");
+        msgsnd(qid, &user_message, sizeof(struct q_data), 0);
+
+        user_count.mtype = 1;
+        message_counter++;
+        user_count.message_counter = message_counter;
+        msgsnd(qid, &user_count, 3*sizeof(int), 0);
+    }
+    else if(total_user > 2){
+        printf("talk_start\n");
+    }
+
+    pid = fork();
+
+    if(pid == 0){
+        receiver(id, qid);
+    }
+    else{
+        //굳이 안 해줘도 된다고 했음
+        //waitpid(pid, 0, WNOHANG);
+        sender(id, qid);
+    }
+
+    msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT);
+    id_counter = user_count.id_counter;
+    total_user = user_count.total_user;
+    message_counter = user_count.message_counter;
+
+    user_count.mtype = 1;
+    user_count.id_counter = id_counter;
+    user_count.total_user = total_user - 1;
+    user_count.message_counter = message_counter;
+    msgsnd(qid, &user_count, 3*sizeof(int), 0);
+
+    //교수님 말씀으로는 굳이 pid(receiver)를 기다릴 필요가 없으니까 WNOHANG으로 반복적으로 확인 안 해줘도 된다고 해서 마지막으로 뺐음
+    waitpid(pid, 0, 0);
+
+    if(user_count.total_user == 0){
         msgctl(qid, IPC_RMID, 0);
     }
 
