@@ -1515,16 +1515,106 @@
 
   p14-3 문제 busy waiting 사용하지 말고 세마포 사용하여 만들어보기
 
+  - 세마포 2개 만들어서 client에서 server로 보내는 동기화를 위한 세마포 하나, server에서 client로 보내는 동기화를 위한 세마포 하나, 의 두 개 세마포를 사용
+  - 이전 busy waiting이랑 다르게 shared memory 구조체 말고 그냥 int 메모리 공간으로 사용.
+  - flag 없이 int size 하나만 사용하여 작업
+  - semget할 때 ```semid = semget(semkey, 2, 0600|IPC_CREAT|IPC_EXCL);``` 두 번째 인자는 세마포 집합 내의 세마포 갯수이니까 주의할 것
+
   - server
 
     ```c
+    int main(int argc, char **argv){
+        int i, semid, shmid;
+        key_t semkey, shmkey;
+        union semun arg;
+        struct sembuf p_buf;
+        ushort sembuf[2] = {0};
+        int *shmbuf;
+        
+        semkey = ftok("semkey", 3);
+        semid = semget(semkey, 2, 0600|IPC_CREAT|IPC_EXCL);
+        
+        if(semid == -1){
+            semid = semget(semkey, 1, 0600);
+        }
+        else{
+            arg.array = sembuf;
+            semctl(semid, 0, SETALL, arg);
+        }
+        
+        shmkey = ftok("shmkey", 3);
+        shmid = shmget(shmkey, sizeof(int), 0600|IPC_CREAT);
+        shmbuf = (int *)shmat(shmid, 0 ,0);
+        
+        for(i=0;i<15;i++){
+            //0 wait
+            p_buf.sem_num = 0;
+            p_buf.sem_op = -1;
+            p_buf.sem_flg = 0;
+            semop(semid, &p_buf, 1);
+            
+            *(shmbuf+0) = *(shmbuf+0) + 8;
+            
+            //1 signal
+            p_buf.sem_num = 1;
+            p_buf.sem_op = 1;
+            p_buf.sem_flg = 0;
+            semop(semid, &p_buf, 1);
+        }
+        
+        semctl(semid, IPC_RMID, 0);
+        shmctl(shmid, IPC_RMID, 0);
     
+        exit(0);
+    }
     ```
 
   - client
 
     ```c
+    int main(int argc, char **argv){
+        int i, semid, shmid;
+        key_t semkey, shmkey;
+        union semun arg;
+        struct sembuf p_buf;
+        ushort sembuf[2] = {0};
+        int *shmbuf;
+        
+        semkey = ftok("semkey", 3);
+        semid = semget(semkey, 2, 0600|IPC_CREAT|IPC_EXCL);
+        
+        if(semid == -1){
+            semid = semget(semkey, 1, 0600);
+        }
+        else{
+            arg.array = sembuf;
+            semctl(semid, 0, SETALL, arg);
+        }
+        
+        shmkey = ftok("shmkey", 3);
+        shmid = shmget(shmkey, sizeof(int), 0600|IPC_CREAT);
+        shmbuf = (int *)shmat(shmid, 0 ,0);
+        
+        for(i=0;i<5;i++){
+            scanf("%d", (shmbuf+0));
+            
+            //0 signal
+            p_buf.sem_num = 0;
+            p_buf.sem_op = 1;
+            p_buf.sem_flg = 0;
+            semop(semid, &p_buf, 1);
+            
+            //1 wait
+            p_buf.sem_num = 1;
+            p_buf.sem_op = -1;
+            p_buf.sem_flg = 0;
+            semop(semid, &p_buf, 1);
+            
+            printf("[input + 8] ==> %d\n", *(shmbuf+0));
+        }
     
+        exit(0);
+    }
     ```
 
 ## 20181126
