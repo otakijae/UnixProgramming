@@ -1375,4 +1375,376 @@ int main(int argc, char **argv){
 }
 ```
 
-- 
+## Producer / Consumer Problem with C
+
+```c
+#define BUFFER_SIZE 5
+#define EMPTY_ID 0
+#define FULL_ID 1
+#define MUTEX_ID 2
+#define NSEM_SIZE 3
+
+#define SHM_KEY 9
+#define SEM_KEY "."
+
+static struct sembuf downEmpty = { EMPTY_ID, -1, 0 };
+static struct sembuf upEmpty = { EMPTY_ID, 1, 0 };
+static struct sembuf upFull = { FULL_ID, 1, 0 };
+static struct sembuf downFull = { FULL_ID, -1, 0 };
+static struct sembuf downMutex = { MUTEX_ID, -1, 0 };
+static struct sembuf upMutex = { MUTEX_ID, 1, 0 };
+
+int *create_shared_mem_buffer();
+int create_semaphore_set();
+int get_buffer_size(int *sbuff);
+void clear_buffer(int *sbuf);
+
+// producer
+void insert_item(int item, int semid, int *shared_buffer) {
+    int index = get_buffer_size(shared_buffer);
+    shared_buffer[index] = item;
+}
+
+int produce_item() {
+    return 0xFF; // nothing dynamic just write a static integer a slot
+}
+
+int main(int argc, const char *argv[]) {
+    int *shared_buffer = create_shared_mem_buffer();
+    int semid = create_semaphore_set();
+
+    clear_buffer(shared_buffer); // prepare buffer for jobs
+
+    int item = 0;
+
+    while (1) {
+        item = produce_item();
+        semop(semid, &downEmpty, 1);
+        semop(semid, &downMutex, 1);
+        insert_item(item, semid, shared_buffer);
+        debug_buffer(shared_buffer);
+        semop(semid, &upMutex, 1);
+        semop(semid, &upFull, 1);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+// consumer
+void consume_item(int item) {
+    // do something with item
+}
+
+int remove_item(int semid, int *shared_buffer) {
+    int index = get_buffer_size(shared_buffer) - 1;
+    int item = shared_buffer[index];
+    shared_buffer[index] = 0x00;
+    return item;
+}
+
+int main(int argc, const char *argv[])
+{
+    int *shared_buffer = create_shared_mem_buffer();
+    int semid = create_semaphore_set();
+
+    int item = 0;
+
+    while(1) {
+        semop(semid, &downFull, 1);
+        semop(semid, &downMutex, 1);
+        item = remove_item(semid, shared_buffer);
+        debug_buffer(shared_buffer);
+        semop(semid, &upMutex, 1);
+        semop(semid, &upEmpty, 1);
+        consume_item(item);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * returns current size of shared buffer
+ */
+int get_buffer_size(int *sbuff) {
+    int i = 0;
+    int counter = 0;
+    for (i = 0; i < BUFFER_SIZE; ++i) {
+        if (sbuff[i] == 0xFF) {
+            counter++;
+        }
+    }
+    return counter;
+}
+
+void debug_buffer(int *sbuff) {
+    int i = 0;
+    for (i = 0; i < BUFFER_SIZE; ++i) {
+        if (sbuff[i] == 0xFF) printf("1");
+    }
+    printf("\n");
+}
+
+/**
+ * returns a pointer to a shared memory buffer that the
+ * producer can write to.
+ */
+int *create_shared_mem_buffer() {
+    int *shmaddr = 0; /* buffer address */
+    key_t key = SHM_KEY; /* use key to access a shared memory segment */
+
+    int shmid = shmget(key, BUFFER_SIZE, IPC_CREAT | SHM_R | SHM_W); /* give create, read and write access */
+    if (errno > 0) {
+        perror("failed to create shared memory segment");
+        exit (EXIT_FAILURE);
+    }
+
+    shmaddr = (int*)shmat(shmid, NULL, 0);
+    if (errno > 0) {
+        perror ("failed to attach to shared memory segment");
+        exit (EXIT_FAILURE);
+    }
+
+    // clean out garbage memory in shared memory
+    return shmaddr;
+}
+
+/**
+ * only used in the producer to clean out garbage memory when
+ * constructing initial buffer.
+ */
+void clear_buffer(int *sbuff) {
+    int i = 0;
+    for (i = 0; i < BUFFER_SIZE; ++i) sbuff[i] = 0x00;
+}
+
+/**
+ * create FULL and EMPTY semaphores
+ */
+int create_semaphore_set() {
+    key_t key = ftok(SEM_KEY, 'E');
+
+    int semid = semget(key, NSEM_SIZE, 0600 | IPC_CREAT);
+    if (errno > 0) {
+        perror("failed to create semaphore array");
+        exit (EXIT_FAILURE);
+    }
+
+    semctl(semid, FULL_ID, SETVAL, 0);
+    if (errno > 0) {
+        perror("failed to set FULL semaphore");
+        exit (EXIT_FAILURE);
+    }
+
+    semctl(semid, EMPTY_ID, SETVAL, BUFFER_SIZE);
+    if (errno > 0) {
+        perror("failed to set EMPTY sempahore");
+        exit (EXIT_FAILURE);
+    }
+
+    semctl(semid, MUTEX_ID, SETVAL, 1);
+    if (errno > 0) {
+        perror("failed to create mutex");
+    }
+
+    return semid;
+}
+```
+
+- producer / consumer problem implemented with circular buffer in C.
+
+```c
+/*
+ * The Bounded Buffer (aka Producer/Consumer) problem.
+ * Demonstrates the UNIX / LINUX fork, shared memory, and semaphores.
+ *
+ * shmget - gets and returns a shared memory segment -- called only once.
+ * shmat - attaches to the shared memory segment created by shmget; called by
+ *	   all processes wishing to use the shared memory.
+ * semop - performs operations on the shared memory: uses a sembuf structure:
+ *	   unsigned short	sem_num;	semaphore number
+ *	   short		sem_op;		semaphore operation
+ *	   short		sem_flg;	operation flags
+ *
+ *	   A binary semaphore (i.e., available or not available) is used to
+ *	   enforce mutual exclusion.  It is initialized to 1 (sem_op = 1).
+ *	   A counting semaphore (used here to guarantee either spaces or
+ *	   elements in the buffer) is initialized to the number of available
+ *	   resources (the number of slots in the buffer in this example).
+ *	   The semaphore is acquired by setting sem_op = -1 (if the current
+ *	   semaphore value is >0, the count is decremented and the process
+ *	   proceeds; if the semaphore value is 0, the process suspends).
+ *	   The semaphore is released by setting sem_op = 1, which increments
+ 	   the semaphore value (this also resumes any suspended processes).
+ */
+
+/* The circular buffer is managed by two values:
+ * a front ponter that points to the buffer location where the next
+ * element will be inserted (by a producer); and
+ * a back pointer from whence the next element will be removed (by a consumer).
+ * These values are stored in a array of two integers in shared memory,
+ * which is accessed by the symbolic constants defined below.
+ * The current circular buffer has a capacity of 10.
+ */
+
+enum { FRONT, BACK, BUF_SIZE = 10 };
+
+void producer(int);
+void consumer(int);
+void debug();
+
+/* The id's are inherited by the children after the fork. */
+
+/* shared memory ids */
+int	var_id;		/* shared memory holding counter, front, and back */
+int	buf_id;		/* buffer shared memroy segment */
+
+/* semaphore id.
+ * The semaphore id below will represent 3 separate semaphores in an array:
+ * 0: counting semaphore, which is the number of free spaces in the buffer.
+ * 1: counting semaphore, which is the number of elements in the buffer.
+ * 2: binary semaphore, which enforces mutual exclusion to critical sections.
+ */
+
+int	sem_id;		/* semaphore id */
+
+int main(int argc, char* argv[]) {
+    int	i;
+    int*	vars;			/* array of shared mem front & back  */
+    struct	sembuf	init_sm[] = {		/* initialize the semaphores */
+            { 0, BUF_SIZE, IPC_NOWAIT },	/* init # spaces = BUF_SIZE  */
+            { 1, 0, IPC_NOWAIT },		/* init # elements = 0	     */
+            { 2, 1, IPC_NOWAIT }		/* init mutual exclusion = 1 */
+    };
+
+    /* initialize the buffer control variables: front and back	     */
+    var_id = shmget(IPC_PRIVATE, 2 * sizeof(int), S_IRUSR | S_IWUSR);
+    vars = (int *)shmat(var_id, 0, 0);
+    vars[FRONT] = vars[BACK] = 0;
+
+    /* initialize the buffer */
+    buf_id = shmget(IPC_PRIVATE, BUF_SIZE * sizeof(int), S_IRUSR | S_IWUSR);
+
+    /* initialize the semaphores */
+    sem_id = semget(IPC_PRIVATE, 3, S_IRUSR | S_IWUSR);
+    semop(sem_id, init_sm, 3);
+
+    /* Spawn all concurrent processes.
+     * fork returns the child's pid to the parent and 0 to the child.
+     * the following loop starts five new child processes and assigns
+     * them the roles of producer or consumer.
+     */
+    for (i = 0; i < 5; i++) {
+        int	pid = fork();
+
+        if (pid == 0 && i < 3)
+            producer(i);
+        else if (pid == 0)
+            consumer(i);
+        /*else pid == 0, which implies the parent process --
+        it loops around to start the next child.*/
+    }
+
+    /* 5 processes were started - wait for five processes to finish */
+    for (i = 0; i < 5; i++) {
+        wait(NULL);
+        debug();
+    }
+
+    return 0;
+}
+
+
+/*
+ * Producer processes "produce" a pseudo-random number and simulates the
+ * time needed to produce something by sleeping for that number of seconds.
+ * After awakening, they attempt to acquire a semaphore lock, waiting if it's
+ * not available.  After placing the pseudo-random number in the shared memory,
+ * they releases the lock.
+ */
+void producer(int id) {
+    int	i;
+    char	obuf[512];
+    int*	vars;
+    int*	buffer;
+    struct	sembuf	acquire[] = {{ 0, -1, 0 }, { 2, -1, SEM_UNDO }};
+    struct	sembuf	release[] = {{ 1, 1, 0 }, { 2, 1, SEM_UNDO }};
+
+    vars = (int *)shmat(var_id, 0, 0);	/* attach to buffer vars */
+    buffer = (int *)shmat(buf_id, 0, 0);	/* attach to the buffer */
+
+    fprintf(stderr, "Producer starting\n");
+    for (i = 0; i < 10; i++) {
+        int	prod = rand() % 8;
+        sleep(prod);
+
+        /* critical section -- see section 6.2 */
+        semop(sem_id, acquire, 2);	/* buffer not full	     */
+
+        buffer[vars[FRONT]] = prod;
+        vars[FRONT] = (vars[FRONT] + 1) % BUF_SIZE;
+
+        semop(sem_id, release, 2);	/* buffer has 1 more element */
+        /* end critical section */
+
+        sprintf(obuf, "producer %d %d\n", id, prod);
+        write(1, obuf, strlen(obuf));
+    }
+    fprintf(stderr, "producer %d exiting\n", id);
+    exit(0);
+}
+
+
+/*
+ * Consumer processes simulates the time needed to consume something by
+ * sleeping for a pseudo-random amount of time.
+ * After awakening, they attempt to acquire a semaphore lock, waiting if it's
+ * not available.  After removing a pseudo-random number from the buffer in the
+ * shared memory, they releases the lock.
+ */
+void consumer(int id) {
+    int	i;
+    char	obuf[512];
+    int*	vars;
+    int*	buffer;
+    struct	sembuf	acquire[] = {{ 1, -1, 0 }, { 2, -1, SEM_UNDO }};
+    struct	sembuf	release[] = {{ 0, 1, 0 }, { 2, 1, SEM_UNDO }};
+
+    vars = (int *)shmat(var_id, 0, 0);	/* attach to buffer vars */
+    buffer = (int *)shmat(buf_id, 0, 0);	/* attach to the buffer */
+
+    fprintf(stderr, "Consumer starting\n");
+    for (i = 0; i < 15; i++) {
+        int	consume;
+        sleep(rand() % 4);
+
+        /* critical section -- see section 6.2 */
+        debug();
+        semop(sem_id, acquire, 2);	/* buffer not empty 	   */
+
+        consume = buffer[vars[BACK]];
+        vars[BACK] = (vars[BACK] + 1) % BUF_SIZE;
+
+        semop(sem_id, release, 2);	/* buffer has 1 more space */
+        /* end critical section */
+
+        sprintf(obuf, "consumer %d %d\n", id, consume);
+        write(1, obuf, strlen(obuf));
+    }
+    fprintf(stderr, "consumer %d exiting\n", id);
+    exit(0);
+}
+
+/*
+ * prints the semaphore values of the three programs semaphores.
+ */
+void debug()
+{
+    unsigned short	semvals[3];
+    union semun	arg;
+    arg.array = semvals;
+    semctl(sem_id, 0, GETALL, arg);
+    printf("\t%d\t%d\t%d\n", semvals[0], semvals[1], semvals[2]);
+}
+```
+
