@@ -1,0 +1,494 @@
+# 이 viminfo 파일은 빔이 만든 것입니다 Vim 7.4.
+# 조심만 한다면 고칠 수도 있습니다!
+
+# 이 파일이 저장되었을 때의 'encoding'의 값
+*encoding=utf-8
+
+
+# hlsearch on (H) or off (h):
+~H
+# Last Search Pattern:
+~MSle0~/\<in\>
+
+# 마지막으로 바꾼 문자열:
+$
+
+# 명령 줄 히스토리 (새것부터 오래된 것 순):
+:wq
+:q
+:w
+:WQ
+:wwq
+:ㅈ
+:wNext
+:wq:w::
+:wqwq
+: %ld \n", getpid(), getppid());
+: %s \n", d->d_ino, d->d_name);
+
+# 찾을 문자열 히스토리 (새것부터 오래된 것 순):
+? \<in\>
+? \<addr\>
+? \<PROT_READ\>
+? \<printf\>
+? \<file\>
+? \<sizeof\>
+?/printf
+?/data
+
+# 표현 히스토리 (새것부터 오래된 것 순):
+
+# 입력 줄 히스토리 (새것부터 오래된 것 순):
+
+# 입력 줄 히스토리 (새것부터 오래된 것 순):
+
+# 레지스터:
+"0	LINE	0
+	
+	int main(int argc, char **argv){
+	    int id, qid;
+	    key_t key;
+	    pid_t pid;
+	    struct q_entry user_count;
+	
+	    key = ftok("keyfile", 1);
+	    qid = msgget(key, 0600|IPC_CREAT);
+	
+	    if(msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT) < 0){
+	        id_counter = 1;
+	        total_user = 1;
+	        message_counter = 2;
+	
+	        user_count.mtype = 1;
+	        user_count.id_counter = id_counter;
+	        user_count.total_user = total_user;
+	        user_count.message_counter = message_counter;
+	        id = id_counter;
+	        msgsnd(qid, &user_count, 3*sizeof(int), 0);
+	    }
+	    else{
+	        id_counter = user_count.id_counter + 1;
+	        total_user = user_count.total_user + 1;
+	        message_counter = user_count.message_counter;
+	
+	        user_count.mtype = 1;
+	        user_count.id_counter = id_counter;
+	        user_count.total_user = total_user;
+	        user_count.message_counter = message_counter;
+	        id = id_counter;
+	        msgsnd(qid, &user_count, 3*sizeof(int), 0);
+	    }
+	
+	    printf("id = %d\n", id);
+	
+	    pid = fork();
+	    if(pid == 0){
+	        receiver(id, qid);
+	    }
+	    else{
+	        waitpid(pid, 0, WNOHANG);
+	        sender(id, qid);
+	    }
+	
+	    msgrcv(qid, &user_count, 3*sizeof(int), 1, IPC_NOWAIT);
+	    id_counter = user_count.id_counter;
+	    total_user = user_count.total_user;
+	    message_counter = user_count.message_counter;
+""1	LINE	0
+	                    printf("nread : %d\n", nread);
+"2	LINE	0
+	        printf("n1 : %d\n", n1);
+"3	LINE	0
+	        }
+"4	LINE	0
+	            exit(0);
+"5	LINE	0
+	            
+"6	LINE	0
+	        if(id_buffer[0] == 0 && id_buffer[1]==0 && id_buffer[2] == 0){
+"7	LINE	0
+	
+"8	LINE	0
+	printf("nread : %d\n", nread);
+"9	LINE	0
+	#include <stdio.h>
+	#include <sys/types.h>
+	#include <sys/stat.h>
+	#include <sys/wait.h>
+	#include <fcntl.h>
+	#include <unistd.h>
+	#include <dirent.h>
+	#include <string.h>
+	#include <time.h>
+	#include <ftw.h>
+	#include <stdlib.h>
+	#include <sys/mman.h>
+	#include <sys/ipc.h>
+	#include <sys/msg.h>
+	#include <sys/sem.h>
+	#include <sys/shm.h>
+	#include <signal.h>
+	
+	#define BUFSIZE 512
+	
+	int main(int argc, char **argv) {
+	    char fifo[6][15] = {"f1", "f2", "f3", "f4", "f5", "f6"};
+	    int i, in, fd[6], n1, nread, counter = 0, id_buffer[3] = {0,0,0};
+	    fd_set set, master;
+	    
+	    for(i=0;i<6;i++){
+	        mkfifo(fifo[i], 0600);
+	    }
+	    
+	    fd[0] = open(fifo[0], O_RDONLY|O_NONBLOCK);
+	    fd[1] = open(fifo[1], O_RDONLY|O_NONBLOCK);
+	    fd[2] = open(fifo[2], O_RDONLY|O_NONBLOCK);
+	    
+	    fd[3] = open(fifo[3], O_RDWR|O_NONBLOCK);
+	    fd[4] = open(fifo[4], O_RDWR|O_NONBLOCK);
+	    fd[5] = open(fifo[5], O_RDWR|O_NONBLOCK);
+	
+	    FD_ZERO(&master);
+	    
+	    for (i=0;i<3;i++){
+	        if(fd[i] > 0){
+	            FD_SET(fd[i], &master);
+	            id_buffer[i] = 1;
+	        }
+	    }
+	    while (set=master, (n1 = select(fd[2]+1, &set, NULL, NULL, NULL)) > 0) {
+	        printf("n1 : %d\n", n1);
+	        for (i=0;i<3;i++) {
+	            if (FD_ISSET(fd[i], &set)) {
+	                if((nread = read(fd[i], &in, sizeof(int))) > 0){
+"a	LINE	0
+	    irintf("access permission : %o\n%d\n%ld\n", buffer.st_mode&0777, buffer.st_nlink, buffer.st_size); 
+"-	CHAR	0
+	s
+
+# 파일 마크:
+'M  10  1  ~/test2.c
+'0  10  15  ~/TEST/13011022-2.c
+'1  55  57  ~/TEST/13011022-2.c
+'2  41  0  ~/TEST/client2.c
+'3  86  0  ~/TEST/s13011022-3.c
+'4  62  0  ~/TEST/13011022-2.c
+'5  62  0  ~/TEST/13011022-1.c
+'6  59  0  ~/TEST/13011022-2.c
+'7  54  0  ~/TEST/13011022-2.c
+'8  79  0  ~/TEST/13011022-2.c
+'9  80  66  ~/TEST/13011022-2.c
+
+# 점프목록 (새것이 먼저):
+-'  10  15  ~/TEST/13011022-2.c
+-'  55  20  ~/TEST/13011022-2.c
+-'  62  0  ~/TEST/13011022-2.c
+-'  41  0  ~/TEST/client2.c
+-'  39  4  ~/TEST/client2.c
+-'  86  0  ~/TEST/s13011022-3.c
+-'  1  0  ~/TEST/s13011022-3.c
+-'  59  0  ~/TEST/13011022-2.c
+-'  62  0  ~/TEST/13011022-1.c
+-'  36  4  ~/TEST/13011022-1.c
+-'  54  20  ~/TEST/13011022-2.c
+-'  79  0  ~/TEST/13011022-2.c
+-'  80  3  ~/TEST/13011022-2.c
+-'  38  0  ~/TEST/client1.c
+-'  1  0  ~/TEST/client1.
+-'  83  0  ~/TEST/13011022-2.c
+-'  31  34  ~/TEST/13011022-1.c
+-'  32  34  ~/TEST/13011022-1.c
+-'  1  0  ~/LAB11-12_FIFO/fifo_client_example.c
+-'  35  0  ~/LAB11-12_FIFO/p11-2client.c
+-'  1  0  ~/LAB11-12_FIFO/p11-2client.c
+-'  55  0  ~/LAB11-12_FIFO/p11-2server.c
+-'  1  0  ~/LAB11-12_FIFO/p11-2server.c
+-'  44  0  ~/LAB11-12_FIFO/p11-3.c
+-'  1  0  ~/LAB11-12_FIFO/p11-3.c
+-'  1  0  ~/LAB11-12_FIFO/p11-1B.c
+-'  39  0  ~/LAB11-12_FIFO/p11-1A.c
+-'  1  0  ~/LAB11-12_FIFO/p11-1A.c
+-'  67  0  ~/LAB11-07_PIPE/p10-1.c
+-'  1  0  ~/LAB11-07_PIPE/p10-1.c
+-'  1  0  ~/LAB11-07_PIPE/p10-1.
+-'  1  0  ~/LAB10-29_SIGNAL/p8-1.c
+-'  1  0  ~/LAB10-29_SIGNAL/example.c
+-'  61  0  ~/TEST/13011022-1.c
+-'  51  20  ~/TEST/13011022-1.c
+-'  1  0  ~/TEST/13011022-1.c
+-'  169  0  ~/QUIZ12-26#5/main.c
+-'  1  0  ~/QUIZ12-26#5/main.c
+-'  1  0  ~/TEST/pipe_select_example.c
+-'  64  0  ~/TEST/server_practice.c
+-'  1  0  ~/TEST/server_practice.c
+-'  1  0  ~/TEST/server_practice.
+-'  18  0  ~/TEST/client2.c
+-'  19  0  ~/TEST/client1.c
+-'  1  63  ~/TEST/client2.c
+-'  1  0  ~/TEST/client1.c
+-'  196  0  ~/QUIZ12-05/p3_submitted.c
+-'  1  0  ~/QUIZ12-05/p3_submitted.c
+-'  144  0  ~/QUIZ10-17/13011022.c
+-'  1  0  ~/QUIZ10-17/13011022.c
+-'  154  0  ~/QUIZ10-15/13011022.c
+-'  1  0  ~/QUIZ10-15/13011022.c
+-'  132  0  ~/QUIZ12-05/main.c
+-'  1  0  ~/QUIZ12-05/main.c
+-'  45  0  ~/LAB11-21/p14-3client.c
+-'  1  0  ~/LAB11-21/p14-3client.c
+-'  67  0  ~/LAB11-21/p14-4client.c
+-'  24  0  ~/LAB11-21/p14-4client.c
+-'  47  0  ~/LAB11-21/p14-3server.c
+-'  1  0  ~/LAB11-21/p14-3server.c
+-'  1  0  ~/LAB11-21/p14-4server.c
+-'  24  0  ~/LAB11-21/p14-4server.c
+-'  67  0  ~/LAB11-21/p14-4server.c
+-'  35  0  ~/LAB11-12/fifo_server_example.c
+-'  32  8  ~/LAB11-12/fifo_server_example.c
+-'  1  0  ~/LAB11-12/fifo_client_example.c
+-'  37  0  ~/LAB11-12/fifo_client_example.c
+-'  1  0  ~/LAB11-26/lock_writer.c
+-'  48  0  ~/LAB11-26/lock_writer.c
+-'  1  1  ~/LAB11-26/lock_reader.c
+-'  45  0  ~/LAB11-26/lock_reader.c
+-'  1  0  ~/LAB11-21/p14-4client.c
+-'  50  8  ~/LAB11-21/p14-4server.c
+-'  1  0  ~/LAB11-26/p15-1.c
+-'  1  0  ~/LAB11-12/fifo_server_example.c
+-'  1  0  ~/LAB11-12/p11-3.c
+-'  31  8  ~/LAB11-12/p11-2client.c
+-'  38  0  ~/TEST/client1.c
+-'  1  0  ~/TEST/client1.
+-'  23  66  ~/TEST/13011022-2.c
+-'  73  4  ~/TEST/13011022-2.c
+-'  38  0  ~/TEST/client1.c
+-'  1  0  ~/TEST/client1.
+-'  1  0  ~/LAB11-12_FIFO/fifo_client_example.c
+-'  35  0  ~/LAB11-12_FIFO/p11-2client.c
+-'  1  0  ~/LAB11-12_FIFO/p11-2client.c
+-'  55  0  ~/LAB11-12_FIFO/p11-2server.c
+-'  1  0  ~/LAB11-12_FIFO/p11-2server.c
+-'  44  0  ~/LAB11-12_FIFO/p11-3.c
+-'  1  0  ~/LAB11-12_FIFO/p11-3.c
+-'  77  0  ~/TEST/13011022-2.c
+-'  62  0  ~/TEST/13011022-1.c
+-'  36  4  ~/TEST/13011022-1.c
+-'  62  0  ~/TEST/13011022-1.c
+-'  41  0  ~/TEST/client2.c
+-'  39  4  ~/TEST/client2.c
+-'  86  0  ~/TEST/s13011022-3.c
+-'  1  0  ~/TEST/s13011022-3.c
+
+# 파일내의 마크 히스토리 (새것부터 오래된 순):
+
+> ~/TEST/13011022-2.c
+	"	10	15
+	^	55	58
+	.	50	0
+	+	80	31
+	+	80	31
+	+	80	33
+	+	80	33
+	+	80	33
+	+	80	44
+	+	80	44
+	+	80	44
+	+	80	0
+	+	80	0
+	+	80	20
+	+	80	47
+	+	80	3
+	+	80	51
+	+	80	0
+	+	80	31
+	+	80	31
+	+	80	31
+	+	80	35
+	+	80	35
+	+	80	35
+	+	80	42
+	+	80	42
+	+	80	42
+	+	80	0
+	+	80	19
+	+	80	11
+	+	80	35
+	+	80	7
+	+	80	7
+	+	80	7
+	+	80	7
+	+	80	7
+	+	80	7
+	+	80	7
+	+	80	40
+	+	80	40
+	+	80	40
+	+	80	36
+	+	80	36
+	+	80	36
+	+	80	29
+	+	80	0
+	+	80	32
+	+	80	37
+	+	80	37
+	+	80	37
+	+	80	33
+	+	80	33
+	+	80	33
+	+	80	35
+	+	80	35
+	+	80	35
+	+	80	31
+	+	80	31
+	+	80	31
+	+	80	36
+	+	80	12
+	+	80	0
+	+	80	62
+	+	80	21
+	+	80	7
+	+	80	21
+	+	80	4
+	+	80	28
+	+	80	35
+	+	80	16
+	+	80	57
+	+	80	36
+	+	80	0
+	+	80	7
+	+	80	0
+	+	80	7
+	+	80	8
+	+	80	11
+	+	80	15
+	+	80	15
+	+	80	11
+	+	80	0
+	+	80	67
+	+	80	0
+	+	80	5
+	+	80	3
+	+	80	66
+	+	80	0
+	+	1	0
+	+	79	0
+	+	59	0
+	+	62	0
+	+	57	9
+	+	62	0
+	+	55	19
+	+	55	82
+	+	56	12
+	+	57	20
+	+	56	23
+	+	56	0
+	+	55	57
+	+	47	0
+	+	50	0
+
+> ~/TEST/client2.c
+	"	41	0
+	^	19	19
+	.	18	0
+	+	1	15
+	+	41	0
+	+	20	0
+	+	26	0
+	+	25	3
+	+	40	0
+	+	39	3
+	+	19	0
+	+	18	0
+
+> ~/TEST/s13011022-3.c
+	"	86	0
+
+> ~/TEST/13011022-1.c
+	"	62	0
+	^	36	34
+	.	36	34
+	+	47	0
+	+	44	0
+	+	30	41
+	+	31	41
+	+	30	0
+	+	34	41
+	+	35	41
+	+	36	41
+	+	34	34
+	+	35	34
+	+	36	34
+
+> ~/TEST/client1.c
+	"	38	0
+	^	19	19
+	.	18	0
+	+	38	0
+	+	20	0
+	+	18	22
+	+	20	0
+	+	20	0
+	+	18	0
+
+> ~/TEST/client1.
+	"	1	0
+
+> ~/LAB11-12_FIFO/fifo_client_example.c
+	"	1	0
+
+> ~/LAB11-12_FIFO/p11-2client.c
+	"	35	0
+
+> ~/LAB11-12_FIFO/p11-2server.c
+	"	55	0
+
+> ~/LAB11-12_FIFO/p11-3.c
+	"	44	0
+
+> ~/LAB11-12_FIFO/p11-1B.c
+	"	1	0
+
+> ~/LAB11-12_FIFO/p11-1A.c
+	"	39	0
+
+> ~/LAB11-07_PIPE/p10-1.c
+	"	67	0
+
+> ~/LAB11-07_PIPE/p10-1.
+	"	1	0
+
+> ~/LAB10-29_SIGNAL/p8-1.c
+	"	1	0
+
+> ~/LAB10-29_SIGNAL/example.c
+	"	1	0
+
+> ~/QUIZ12-26#5/main.c
+	"	169	0
+	^	169	0
+	.	168	1
+	+	168	1
+
+> ~/TEST/pipe_select_example.c
+	"	1	0
+	^	1	0
+	.	78	1
+	+	78	1
+
+> ~/TEST/server_practice.c
+	"	64	0
+	^	64	0
+	.	63	1
+	+	1	18
+	+	1	1
+	+	1	18
+	+	1	1
+	+	1	18
+	+	1	1
+	+	1	18
+	+	1	1
+	+	1	18
+	+	63	1
+
+> ~/TEST/server_practice.
+	"	1	0
