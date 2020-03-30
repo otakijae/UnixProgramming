@@ -7,25 +7,21 @@
   ```c
   #include <stdio.h>
 
-  void swapNumber(int *first, int *second)
-  {
+  void swapNumber(int *first, int *second) {
       int temp;
       temp = *first;
       *first = *second;
       *second = temp;
   }
-
-  int main()
-  {
+  
+int main() {
       int num1 = 10;
       int num2 = 20;
-
+  
       swapNumber(&num1, &num2);
-
-      printf("%d %d\n", num1, num2);
-
+    printf("%d %d\n", num1, num2);
       return 0;
-  }
+}
   ```
 
   ```c
@@ -33,220 +29,202 @@
   ```
 
   변수의 메모리 주소를 함수에 전달하면 함수 안에서는 메모리 주소에 접근하여 값을 저장할 수 있음
-
+  
   함수의 반환값은 값을 하나만 반환할 수 있는데 이처럼 매개변수를 포인터로 사용하면 함수 바깥으로 여러 개의 값을 전달할 수 있음
 
   지금까지 scanf 함수를 사용할 때 변수를 그대로 넣지 않고 &를 사용하여 변수의 메모리 주소를 넣었다
-  왜냐하면 scanf함수는 값을 여러 개 입력받을 수 있는데 반환값만으로는 여러 개의 값을 함수 바깥으로 가져올 수 없었기 때문
-
-  ```c
+왜냐하면 scanf함수는 값을 여러 개 입력받을 수 있는데 반환값만으로는 여러 개의 값을 함수 바깥으로 가져올 수 없었기 때문
+  
+```c
   int num1;
   int num2;
-  int num3;
-
+int num3;
+  
   scanf("%d %d %d", &num1, &num2, &num3); // scanf에서 값을 3개 가져옴(scanf는 바깥으로 값을 3개 전달)
   ```
-
-  ![](https://dojang.io/pluginfile.php/614/mod_page/content/31/unit63-4.png)
-
+  
+![](https://dojang.io/pluginfile.php/614/mod_page/content/31/unit63-4.png)
+  
 - 배열과 포인터
 
   ```c
   #include <stdio.h>
 
-  void printArray(int arr[], int count)    // 배열의 포인터와 요소의 개수를 받음
-  {
-      for (int i = 0; i < count; i++)
-      {
+  void printArray(int arr[], int count) {    // 배열의 포인터와 요소의 개수를 받음
+      for (int i = 0; i < count; i++) {
           printf("%d ", arr[i]);
       }
-
       printf("\n");
   }
 
-  int main()
-  {
+  int main() {
       int numArr[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-
-      printArray(numArr, sizeof(numArr) / sizeof(int));    // 배열과 요소의 개수를 넣음
-
+    printArray(numArr, sizeof(numArr) / sizeof(int));    // 배열과 요소의 개수를 넣음
       return 0;
   }
   ```
 
   ```
-  1 2 3 4 5 6 7 8 9 10
+1 2 3 4 5 6 7 8 9 10
   ```
-
+  
   - 함수에서 배열을 매개변수로 사용할 때는 매개변수 이름 뒤에 []만 붙이면 됨
-    (대괄호 안에 크기를 지정하더라도 무시된다)
+  (대괄호 안에 크기를 지정하더라도 무시된다)
   - 즉, arr[]은 배열의 메모리 주소를 담고 있는 포인터이며 배열의 실제 크기를 알 수 없으므로 다른 매개변수를 통해 배열의 크기를 받아야함
   - 이때 요소의 개수를 구하는 방법은 sizeof(배열) / sizeof(자료형)임
     배열의 크기인 10을 그대로 넣어도 되지만 sizeof로 크기를 구하면 배열의 크기가 바뀌었을 때 코드를 수정하지 않아도 됨
-  - printArray 안에서는 매개변수 arr과 count를 사용하여 배열의 요소를 출력할 수 있음
+- printArray 안에서는 매개변수 arr과 count를 사용하여 배열의 요소를 출력할 수 있음
   - 매개변수를 arr[]과 같이 지정했다면 arr은 포인터임
     따라서 다음과 같이 함수 안에서 매개변수로 받은 배열의 요소를 변경하면 함수 바깥에 있는 배열의 요소가 바뀌게 됨
-
+  
   ```c
   #include <stdio.h>
-
-  void printArray(int *arr, int count)    // 매개변수를 포인터로 지정하여 배열을 받음
-  {
-      for (int i = 0; i < count; i++)
-      {
-          printf("%d ", arr[i]);
+  
+  void printArray(int *arr, int count) {    // 매개변수를 포인터로 지정하여 배열을 받음
+      for (int i = 0; i < count; i++) {
+        printf("%d ", arr[i]);
       }
-
       printf("\n");
-  }
-
-  int main()
-  {
+}
+  
+  int main() {
       int numArr[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-
-      printArray(numArr, sizeof(numArr) / sizeof(int));    // 배열과 요소의 개수를 넣음
-
+      printArray(numArr, sizeof(numArr) / sizeof(int));    // 배열과 요소의 개수를 넣음 
       return 0;
   }
+```
+  
   ```
-
+1 2 3 4 5 6 7 8 9 10
   ```
-  1 2 3 4 5 6 7 8 9 10
-  ```
-
+  
   - 1차원 배열은 int *arr과 같이 int형 포인터로 받을 수 있음
-    물론 포인터로는 배열의 크기를 알 수 없으므로 다른 매개변수를 통해 배열의 크기를 받을 수 있음
+  물론 포인터로는 배열의 크기를 알 수 없으므로 다른 매개변수를 통해 배열의 크기를 받을 수 있음
   - (pArr + n)은, 포인터 pArr이 가리키는 곳에서 n칸 건너편의 요소의 값을 참조하라 라는 뜻
-  - 공식이라 생각하기 : arr[i] == *(arr + i)
+- 공식이라 생각하기 : arr[i] == *(arr + i)
   - 배열을 다룰 때 범위를 넘어선 접근을 하지 않도록 주의해야함. 포인터 연산을 하다보면, 간혹 선언해놓은 배열의 범위를 종종 넘어서는 경우가 있음. 이러한 오류는 컴파일 과정에서 발견되지 않고, 원하지 않는 결과를 가져옴. 주의할 것
-
+  
 - 실습1. vi editor 작성 실습
 
   ```c
   #include<stdio.h>
 
   int main(void){
-      
       int i, data[10];
       
-      for (i=0;i<10;i++){
+      for (i=0;i<10;i++) {
           scanf("%d", &data[i]);
       }
       
-      for (i=0;i<10;i++){
+      for (i=0;i<10;i++) {
           data[i]=data[i]+5;
       }
       
-      for (i=0;i<10;i++){
+      for (i=0;i<10;i++) {
           printf("%-5d", data[i]);
       }
       
       printf("\n");
-      
       return 0;
   }
   ```
-
+  
 - 실습2. 함수 사용 실습
 
   ```c
-  int add_five(int data){
+  int add_five(int data) {
       return data + 5;
   }
 
-  int main(void){
+  int main(void) {
       int i, data[10];
 
-      for(i=0;i<10;i++){
+      for(i=0;i<10;i++) {
           scanf("%d", &data[i]);
           data[i] = add_five(data[i]);
       }
 
-      for(i=0;i<10;i++){
+      for(i=0;i<10;i++) {
           printf("%-5d", data[i]);
       }
 
       printf("\n");
-
-      return 0;
+    return 0;
   }
   ```
-
+  
 - 실습3. 포인터 사용 연습
 
   ```c
-  int add_five(int *data){
+  int add_five(int *data) {
       *data = *data + 5;
   }
 
-  int main(void){
+  int main(void) {
       int i, data[10];
 
-      for(i=0;i<10;i++){
+      for(i=0;i<10;i++) {
           scanf("%d", &data[i]);
           add_five(&data[i]);
       }
 
-      for(i=0;i<10;i++){
+      for(i=0;i<10;i++) {
           printf("%-5d", data[i]);
       }
 
       printf("\n");
-
-      return 0;
+    return 0;
   }
   ```
-
+  
 - 실습4. 배열 포인터 사용 연습
 
   ```c
-  int add_five(int *data){
+  int add_five(int *data) {
       int i;
-      for(i=0;i<10;i++){
+      for(i=0;i<10;i++) {
           scanf("%d", &data[i]);
           data[i] = data[i] + 5;
       }
   }
 
-  int main(void){
+  int main(void) {
       int i, data[10];
-
+  
       add_five(data);
 
-      for(i=0;i<10;i++){
+      for(i=0;i<10;i++) {
           printf("%-5d", data[i]);
       }
 
       printf("\n");
-
-      return 0;
+    return 0;
   }
   ```
-
-  ```c
-  int add_five(int *data){
+  
+```c
+  int add_five(int *data) {
       int i;
-      for(i=0;i<10;i++){
+      for(i=0;i<10;i++) {
           scanf("%d", (data + i));
           *(data + i) = *(data + i) + 5;
       }
   }
-
-  int main(void){
+  
+int main(void) {
       int i, data[10];
-
-      add_five(data);
-
-      for(i=0;i<10;i++){
+  
+    add_five(data);
+  
+    for(i=0;i<10;i++) {
           printf("%-5d", data[i]);
       }
-
-      printf("\n");
-
+  
+    printf("\n");
       return 0;
-  }
+}
   ```
-
+  
 - 실습5
 
   ```
@@ -438,7 +416,7 @@
   }
   ```
 
-  ​
+  
 
   다음과 같은 작업을 수행하는 mycopy(실행 파일 이름)라는 프로그램을 작성 하시오.
 
