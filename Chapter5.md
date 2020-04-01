@@ -42,6 +42,7 @@
   ```
 
 - 실행 중인 프로세스 종료 시키기
+
   PID를 알아야 종료시킬 수 있기 때문에 ps로 확인하고 프로세스를 종료시킨다
 
   ```
@@ -49,58 +50,61 @@
   ```
 
 - Process Identifier
-  음이 아닌 정수
-  0 : swapper
-  1 : init
-
+  
+  - 음이 아닌 정수
+  - 0 : swapper
+- 1 : init
+  
   - getpid() : 지금 실행 중인 process ID
-  - getppid() : 지금 실행 중인 process의 parent ID
-
+- getppid() : 지금 실행 중인 process의 parent ID
+  
   ```c
-  #include<unistd.h>
-
+#include<unistd.h>
+  
   pid_t getpid(void);
-  pid_t getppid(void);
-
+pid_t getppid(void);
+  
   getpid();
   getppid();
-  ```
-
+```
+  
 - Process Group
-  특정 프로세스들을 묶어서 하나의 group으로 만들어서, 같은 group에 속한 process들에게 동시에 signal을 보낼 수 있다
-  초기에 fork나 exec에 의해 group id 계승(상속) : 딱히 명시 안 해주면, parent 아래 모든 process는 같은 group임
+  
+  - 특정 프로세스들을 묶어서 하나의 group으로 만들어서, 같은 group에 속한 process들에게 동시에 signal을 보낼 수 있다
+    초기에 fork나 exec에 의해 group id 계승(상속) : 딱히 명시 안 해주면, parent 아래 모든 process는 같은 group임
   그래서 group id를 바꿔주면 그 아래 gid도 다 상속을 받으니 바뀌게 된다
-
-  - Group leader : group leader는 pid와 pgid를 같게 해줘야함. 따라서, 자신의 pid가 group id이면 group leader이다.
-
+  
+- Group leader : group leader는 pid와 pgid를 같게 해줘야함. 따라서, 자신의 pid가 group id이면 group leader이다.
+  
   ```c
   #include <sys/types.h>
-  #include <unistd.h>
-
+#include <unistd.h>
+  
   //나의 group id 알아보기
-  pid_t getpgrp(void);
-
+pid_t getpgrp(void);
+  
   //다른 child의 id를 인자로 넘겨주면, 그 process의 gid 반환
   //인자가 0이면, 호출 프로세스 자신의 group id를 반환
   pid_t getpgid(pid_t pid);
-  ```
-
+```
+  
   ```c
   getpgrp();
   getpgid(0);
-  ```
+```
+  
+  - process group 변경 / setpgid(id, gid);
 
-  process group 변경 / setpgid(id, gid);
-  지금부터 새로운 group leader가 되겠다는 명령
-
+    지금부터 새로운 group leader가 되겠다는 명령
+  
   ```c
-  #include <sys/types.h>
+#include <sys/types.h>
   #include <unistd.h>
-
+  
   //인자(내 id, 내 group id)
-  int setpgid(pid_t pid, pid_t pgid);
+int setpgid(pid_t pid, pid_t pgid);
   ```
-
+  
   ```c
   #include <stdio.h>
   #include <sys/types.h>
@@ -108,48 +112,48 @@
   #include <fcntl.h>
   #include <unistd.h>
   #include <dirent.h>
-  #include <string.h>
+#include <string.h>
   #include <ftw.h>
-
-  int main(int argc, char **argv){
+  
+int main(int argc, char **argv) {
           pid_t pid;
-
-          printf("%ld : %ld\n", getpid(), getppid());
+  
+        printf("%ld : %ld\n", getpid(), getppid());
           printf("%ld : %ld\n", getpgrp(), getpgid(0));
 
           pid = fork();
-
+  
           //child인 경우에 0 반환
-          if(pid == 0){
-                  printf("%ld : %ld\n", getpid(), getppid());
+          if(pid == 0) {
+                printf("%ld : %ld\n", getpid(), getppid());
                   printf("%ld : %ld\n", getpgrp(), getpgid(0));
-
-                  //group id 변경
+  
+                //group id 변경
                   setpgid(getpid(), getpid());
-
+  
                   printf("%ld : %ld\n", getpid(), getppid());
                   printf("%ld : %ld\n", getpgrp(), getpgid(0));
           }
           wait(0);
           return 0;
-  }
+}
   ```
+  
+  - 실행결과
 
-  실행결과
-  ./example.out 실행하면, shell 프로세스가 example 프로세스를 실행
-  example을 group의 리더로 실행시킴
-
+    ./example.out 실행하면, shell 프로세스가 example 프로세스를 실행. example을 group의 리더로 실행시킴
+  
   ```
-  29816 : 16945 //example 프로세스 id : shell 프로세스 id
+29816 : 16945 //example 프로세스 id : shell 프로세스 id
   29816 : 29816 //example 프로세스 gid
-
-  29817 : 29816 //child 프로세스 id : parent인 example 프로세스 id
+  
+29817 : 29816 //child 프로세스 id : parent인 example 프로세스 id
   29816 : 29816 //child 프로세스 gid. example 프로세스의 child이니까 parent의 gid와 같음
-
+  
   29817 : 29816 //child 프로세스 id : parent인 example 프로세스 id
-  29817 : 29817 //child 프로세스를 group leader로 만들어서 pid와 pgid 같아짐
+29817 : 29817 //child 프로세스를 group leader로 만들어서 pid와 pgid 같아짐
   ```
-
+  
 - Session
 
   - 한 session은 한 단말기를 사용하는 foreground process group과 background process group의 집합체이다
@@ -181,44 +185,44 @@
     pid_t setsid(void);
     ```
 
-    제어 단말기를 갖지 않는 새로운 session과 group 생성
-    호출 프로세스의 id가 session과 group의 id가 된다
-    만약, 호출 process가 현재 group의 leader이면 -1을 return한다
+    - 제어 단말기를 갖지 않는 새로운 session과 group 생성
+    
+      호출 프로세스의 id가 session과 group의 id가 된다
 
+      만약, 호출 process가 현재 group의 leader이면 -1을 return한다
+    
     - session을 종료해도 계속 실행 되게 만들 때 session을 변경한다
+      
       이 session과 관계없이 실행하겠다라는 명령이니, shell 프로그램 종료돼도 종료를 못시키게 돼서 사용하지 말 것
 
-- Main함수 인자 사용
-  이제는 이렇게 인자를 전달받아서 프로그램을 만들 것
-
-  ```c
+- Main함수 인자 사용. 이제는 이렇게 인자를 전달받아서 프로그램을 만들 것
+  
+```c
   //argc 문자열 몇 개를 넘겨받았는지 알려줌
   //argv 포인터 배열로, 어떤 값을 넘겨받았는지 알 수 있음
-  int main(int argc, char **argv){
+  int main(int argc, char **argv) {
           int i = 0;
           printf("%d\n", argc);
-
-          while(argv[i] != NULL){
+  
+        while(argv[i] != NULL) {
                   printf("%s\n", argv[i]);
                   i++;
           }
           return 0;
   }
   ```
-
-  - 모든 입출력은 OS가 담당함
-    program이 I/O 작업은 OS에게 부탁을 하는 것임
-    그러면 입력받은 값들을 OS는 main함수 인자로 넘겨주는 것임
-
-  - ```
-    //ls 현재위치 프로그램 이름
-    //-l 프로그램 실행을 위한 인자
-    $ ls -l
-
-    //chmod 현재위치 프로그램 이름
-    //0777 프로그램 실행을 위한 인자
-    //a.c 프로그램 실행을 위한 인자
-    $ chmod 0777 a.c
-    ```
-
+  
+- 모든 입출력은 OS가 담당함. program이 I/O 작업은 OS에게 부탁을 하는 것임. 그러면 입력받은 값들을 OS는 main함수 인자로 넘겨주는 것임
+  
+  ```
+//ls 현재위치 프로그램 이름
+  //-l 프로그램 실행을 위한 인자
+  $ ls -l
+  
+  //chmod 현재위치 프로그램 이름
+  //0777 프로그램 실행을 위한 인자
+  //a.c 프로그램 실행을 위한 인자
+  $ chmod 0777 a.c
+  ```
+  
 - getpid() / getppid() / getpgrp() / getpgid(0) / setpgid(pid, gid) / getsid(pid) / setsid()
