@@ -347,7 +347,7 @@
   - SIGINT 시그널이 오면 지정된 함수 말고 기존의 처리 방식을 사용하게 설정했음
   
     ```c
-  #include <stdio.h>
+    #include <stdio.h>
     #include <sys/types.h>
     #include <sys/stat.h>
     #include <sys/wait.h>
