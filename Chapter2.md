@@ -227,15 +227,15 @@
 
    ```c
    int main(){
-       int i, fd;
-       char ch[100];
+     int i, fd;
+     char ch[100];
 
-       fd = open("data1", O_WRONLY | O_CREAT, 0600);
-       
-       for(i=0;i<5;i++) {
-   				scanf("%s", ch);
-   				write(fd, ch, strlen(ch));
-   		}
+     fd = open("data1", O_WRONLY | O_CREAT, 0600);
+   
+     for(i=0;i<5;i++) {
+       scanf("%s", ch);
+       write(fd, ch, strlen(ch));
+     }
    }
    ```
 
@@ -248,27 +248,27 @@
 
    ```c
    int main() {
-       int i, fd, in[5];
+     int i, fd, in[5];
 
-       fd = open("data2", O_WRONLY | O_CREAT, 0600);
-       
-       for(i=0;i<5;i++) {
-           scanf("%d", in + i);
-           write(fd, in + i, sizeof(int));
-       }
+     fd = open("data2", O_WRONLY | O_CREAT, 0600);
+   
+     for(i=0;i<5;i++) {
+       scanf("%d", in + i);
+       write(fd, in + i, sizeof(int));
+     }
    }
    ```
 
    ```c
    int main() {
-       int i, fd, in[5];
+     int i, fd, in[5];
 
-       fd = open("data2", O_RDONLY);
+     fd = open("data2", O_RDONLY);
 
-       for(i=0;i<5;i++) {
-           read(fd, in + i, sizeof(int));
-           printf("%d", *(in + i));
-       }
+     for(i=0;i<5;i++) {
+       read(fd, in + i, sizeof(int));
+       printf("%d", *(in + i));
+     }
    }
    ```
 
@@ -276,46 +276,48 @@
 
    ```c
    int main() {
-    int data[10] = {0}, i, fd = open("data2", O_RDONLY);
-     
-    read(fd, data, 5 * sizeof(int));
+     int data[10] = {0}, i, fd = open("data2", O_RDONLY);
    
-    for(i=0;i<10;i++) {
-           printf("%-5d", *(data+i));
-       }
+     read(fd, data, 5 * sizeof(int));
    
-    return 0;
+     for(i=0;i<10;i++) {
+       printf("%-5d", *(data+i));
+     }
+   
+     return 0;
    }
+   ```
    
-int main() {
-       int data[10] = {35,36,37,38,39}, i, fd = open("data2", O_WRONLY);
-
-       write(fd, data, 5 * sizeof(int));
-
-       for(i=0;i<10;i++) {
-        printf("%-5d", *(data+i));
-       }
+   ```c
+   int main() {
+     int data[10] = {35,36,37,38,39}, i, fd = open("data2", O_WRONLY);
+   	write(fd, data, 5 * sizeof(int));
    
-       return 0;
-}
+   	for(i=0;i<10;i++) {
+   		printf("%-5d", *(data+i));
+   	}
+   
+   	return 0;
+   }
    ```
    
 3. 문자열 read시 주의할 점. 문자열 맨 마지막 배열에는 '\0'가 들어가니까 read할 때 고려해줘야함
-   문자열 배열 크기가 100인데 문자 읽어올 때 배열 크기 5만큼만 읽어왔으면 마지막 5번째 배열 인덱스에 '\0'을 넣을 것을 명시해줌
+
+   - 문자열 배열 크기가 100인데 문자 읽어올 때 배열 크기 5만큼만 읽어왔으면 마지막 5번째 배열 인덱스에 '\0'을 넣을 것을 명시해줌
 
    - 뭔지 알겠지만 아직 살짝 감이 없음. 나중에 생각하면서 코딩하기
 
    ```c
    int main() {
-       char ch[100];
-       int fd, i, n;
-
-       fd = open("data1", O_RDONLY);
-       n = read(fd, ch, 99);
-       ch[n] = '\0';
-       printf("%s", ch);
-
-       return 0;
+     char ch[100];
+     int fd, i, n;
+   
+     fd = open("data1", O_RDONLY);
+     n = read(fd, ch, 99);
+     ch[n] = '\0';
+     printf("%s", ch);
+   
+     return 0;
    }
    ```
 
@@ -331,11 +333,11 @@ int main() {
     데이터 수가 적으면 큰 차이 없지만, 데이터 수가 엄청 많아지면 실행시간이 많이 차이가 난다.
 
   - I/O 작업 시 OS 내부적으로 context switching이 일어나기 때문에  system call의 수가 적을수록 효율적인 프로그램이다 (write는 system call의 일부임)
-    
+  
 - File을 copy하는 프로그램의 실행 시간을 어떻게 줄이느냐 관건
   
 - read도 마찬가지
-    
+  
   - 가령 파일이 하드디스크에 있으면, OS가 하드디스크에 있는 파일의 정수를 하나씩 포인터로 가져오는 것이 아님
     - 파일의 일부분 한 블록으로 가져와서 거기에서 정수를 가져오는 것임
     - 이 한 블록이 512(disk blocking factor) 크기이고, 따라서 BUFSIZE가 512의 배수일 때 효율적임
@@ -350,11 +352,11 @@ int main() {
   - But, text 파일에서는 안 된다.
     
     ```c
-  #include <sys/types.h>
-    #include <unistd.h>
+    include <sys/types.h>
+    include <unistd.h>
     
     off_t lseek(int filedes, off_t offset, int whence);
-  ```
+    ```
     
   - 사용법
 
@@ -370,13 +372,14 @@ int main() {
     ```
 
   - 1 2 3 4 5
-    
+
     - 5개의 정수를 write했으면 20byte이고 20번째 배열 인덱스에 파일 포인터가 이동해있음
     - 0부터 19번째까지 데이터가 들어가있고, 다음에 데이터를 쓸 위치 20번째로 파일 포인터가 이동해있음
+
   - 즉, 파일 포인터는 다음에 데이터를 쓰고 읽을 위치에 가 있음
-    
+
   - 위에 처럼 파일 포인터가 20에 위치해있을 때,
-    
+
     - lseek(fd, -4, SEEK_SET);
     - lseek(fd, +4, SEEK_END);
     - 배열의 처음부분보다 전으로 포인터를 이동시키는 것은 불가능하지만  ```-1``` 출력
@@ -418,48 +421,46 @@ int main() {
   - redirection. 입력을 받아야하는 값들을 infile에 미리 저장을 해두어서 일일이 입력을 하는 작업을 안 한다
     
   ```c
-    #include<stdio.h>
-    #include<sys/types.h>
-    #include<sys/stat.h>
-    #include<fcntl.h>
-    #include<unistd.h>
-    #include<string.h>
-    
+  #include<stdio.h>
+  #include<sys/types.h>
+  #include<sys/stat.h>
+  #include<fcntl.h>
+  #include<unistd.h>
+  #include<string.h>
+  
   int main() {
-        char ch1[15], ch2[15] = "error message";
-    
-      int n = read(0, ch1, 15);
-    
-      write(1, ch1, n);
-        write(2, ch2, 15);
-    
-      return 0;
-    }
-    ```
-    
+    char ch1[15], ch2[15] = "error message";
+  
+    int n = read(0, ch1, 15);
+  
+    write(1, ch1, n);
+    write(2, ch2, 15);
+  
+    return 0;
+  }
   ```
-    $ ./a.out < infile
-    $ ./a.out > outfile
-    $ ./a.out < infile > outfile
-    ```
-    
-  - pipe
-    
-    - 2개의 실행 파일을 동시에 실행
-    - a.out1의 표준 출력이 a.out2의 표준 입력으로 들어가게 만들어줘야함
-    - a.out1 ==> a.out2
-    - write() ==> read()
-    - printf() ==> scanf()
-  - 파일 하나씩 실행하면 화면에 모두 출력되지만, pipe로 실행하면 최종 값만 화면에 출력된다
-    
-    ```
+  
+  ```
+  $ ./a.out < infile
+  $ ./a.out > outfile
+  $ ./a.out < infile > outfile
+  ```
+  
+- pipe
+  
+  - 2개의 실행 파일을 동시에 실행
+  - a.out1의 표준 출력이 a.out2의 표준 입력으로 들어가게 만들어줘야함
+  - a.out1 ==> a.out2
+  - write() ==> read()
+  - printf() ==> scanf()
+- 파일 하나씩 실행하면 화면에 모두 출력되지만, pipe로 실행하면 최종 값만 화면에 출력된다
+
+  ```
   $ ./a.out1 | ./a.out2
-    ```
+  ```
 
-- 오류 메시지 출력
+- 오류 메시지 출력 perror("error …");
 
-  - perror("error …");
-
-    ```
-    error ... : No such file or directory
-    ```
+  ```
+  error ... : No such file or directory
+  ```

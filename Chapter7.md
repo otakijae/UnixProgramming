@@ -3,43 +3,42 @@
 - signal
 
   - software interrupt
-  - kernel => process, process => process
+  - kernel => process / process => process
   - 자료 전송보다는 비정상적인 상황을 알릴 때 사용
   - 실행 프로세스 중단시키는게 원래 목적
-
-  예) program 수행 중 CTRL-C(interrupt key) 누르면, kernel이 문자를 감지 후 해당 session에 있는 모든 process에게 SIGINT라는 signal을 보낸다. 모든 process는 종료되지만 shell process는 무시
-
+- 예) program 수행 중 CTRL + C (interrupt key) 누르면, kernel이 문자를 감지 후 해당 session에 있는 모든 process에게 SIGINT 라는 signal을 보낸다. 모든 process는 종료되지만 shell process는 무시
+  
 - signal 종류
 
   ```
-  1. SIGHUP: 연결된terminal이hangup하였을때(terminate)
-  2. SIGINT: interrupt key(^C)를입력하였을때(terminate)
-  3. SIGQUIT: quit key(^\)를입력하였을때(terminate+core)
-  4. SIGILL: illegal instruction을수행하였을때(terminate+core)
+  1. SIGHUP: 연결된 terminal이 hangup 했을 때(terminate)
+  2. SIGINT: interrupt key(^C)를 입력했을 때(terminate)
+  3. SIGQUIT: quit key(^\)를 입력했을 때(terminate+core)
+  4. SIGILL: illegal instruction을 수행했을 때(terminate+core)
   5. SIGTRAP: implementation defined hardware fault (terminate+core)
-  6. SIGABRT: abort시스템호출을불렀을때(terminate+core)
+  6. SIGABRT: abort 시스템콜을 불렀을 때(terminate+core)
   7. SIGBUS: implementation defined hardware fault (terminate+core)
   8. SIGFPE: arithmetic exception, /0, floating-point overflow (terminate+core)
-  9. SIGKILL: process를kill하기위핚signal, catch 혹은ignore될수없는signal임(terminate)
+  9. SIGKILL: process를 kill 하기 위한 signal, catch 혹은 ignore 될 수 없는 signal(terminate)
   10. SIGUSR1: user defined signal 1 (terminate)
   11. SIGSEGV: invalid memory reference (terminate+core)
   12. SIGUSR2: user defined signal 2 (terminate)
-  13. SIGPIPE: reader가terminate된pipe에write핚경우발생(terminate)
-  14. SIGALRM: alarm시스템호출후timer가expire된경우(terminate)
-  15. SIGTERM: kill시스템호출이보내는software termination signal (terminate)
-  16. SIGCHLD: child가stop or exit되었을때parent에게전달되는신호(ignore)
+  13. SIGPIPE: reader가 terminate 된 pipe에 write하는 경우 발생(terminate)
+  14. SIGALRM: alarm 시스템콜 후 timer가 expire된 경우(terminate)
+  15. SIGTERM: kill 시스템콜이 보내는 software termination signal (terminate)
+  16. SIGCHLD: child가 stop or exit되었을 때 parent에게 전달되는 신호(ignore)
   17. SIGCONT: continue a stopped process (continue/ignore)
   18. SIGSTOP: sendable stop signal, cannot be caught or ignored (stop process)
   19. SIGTSTP: stop key(^Z)를입력하였을때(stop process)
-  20. SIGTTIN: background process가control tty로부터read핛경우(stop process)
-  21. SIGTTOU: background process가control tty로write핛경우(stop process)
-  22. SIGURG: urgent condition on IO, socket의OOB data (ignore)
+  20. SIGTTIN: background process가 control tty로부터 read할 경우(stop process)
+  21. SIGTTOU: background process가 control tty로 write할 경우(stop process)
+  22. SIGURG: urgent condition on IO, socket의 OOB data (ignore)
   23. SIGXCPU: exceeded CPU time limit (terminate+core/ignore)
   24. SIGXFSZ: exceeded file size limit (terminate+core/ignore)
   25. SIGVTALRM: virtual time alarm, setitimer, (terminate)
   26. SIGPROF: profiling time alarm, setitimer, (terminate)
   27. SIGWINCH: terminal window size changed, (ignore)
-  28. SIGIO: 어떤fd에서asynchronous I/O event가발생하였을경우(terminate/ignore)
+  28. SIGIO: 어떤 fd 에서 asynchronous I/O event가 발생했을 경우(terminate/ignore)
   29. SIGPWR: system power fail (terminate/ignore)
   30. SIGSYS: bad argument to system call (terminate+core)
   
@@ -69,39 +68,39 @@
   #include <unistd.h>
   #include <stdlib.h>
   
-  int main(int argc, char **argv){
-  	pid_t pid;
-      int status, exit_status;
+  int main(int argc, char **argv) {
+    pid_t pid;
+    int status, exit_status;
   
-      if((pid = fork()) < 0){
-          perror("fork failed");
-          exit(1);
-      }
+    if((pid = fork()) < 0) {
+      perror("fork failed");
+      exit(1);
+    }
   
-      if(pid == 0){
-          sleep(4);
-          exit(5);
-      }
+    if(pid == 0) {
+      sleep(4);
+      exit(5);
+    }
   
-      if(pid=wait(&status) == -1){
-          perror("wait failed");
-          exit(2);
-      }
+    if(pid=wait(&status) == -1) {
+      perror("wait failed");
+      exit(2);
+    }
   
-      if(WIFEXITED(status)){
-          exit_status = WEXITSTATUS(status);
-          printf("Exit status from %d was %d\n", pid, exit_status);
-      }
+    if(WIFEXITED(status)) {
+      exit_status = WEXITSTATUS(status);
+      printf("Exit status from %d was %d\n", pid, exit_status);
+    }
   
-      exit(0);
+    exit(0);
   }
   ```
 
   - 시그널을 받고 종료한 경우, WTERMSIG 시그널 번호를 반환함
 
   ```c
-  if(WIFSIGNALED(status)){
-      printf("%d\n", WTERMSIG(status));
+  if(WIFSIGNALED(status)) {
+    printf("%d\n", WTERMSIG(status));
   }
   ```
 
@@ -142,8 +141,9 @@
 - sigaction
 
   - sigaction 지정 : signal 수신 시 원하는 행동을 취할 수 있도록 한다
-    SIGSTOP(process의 일시중단), SIGKILL(process의 종료)의 경우는 별도의 action을 취할 수 없다
-
+    
+  - SIGSTOP(process의 일시중단), SIGKILL(process의 종료)의 경우는 별도의 action을 취할 수 없다
+    
   - 지정 방법
 
     ```c
@@ -152,10 +152,10 @@
     int sigaction(int signo, const struct sigaction *act, struct sigaction *oact);
     
     struct sigaction{
-    	void (*sa_handler)(int);
-        sigset_t sa_mask;
-        int sa_flags;
-        void(*sa_sigaction)(int, siginfo_t *, void *)
+      void (*sa_handler)(int);
+      sigset_t sa_mask;
+      int sa_flags;
+      void(*sa_sigaction)(int, siginfo_t *, void *)
     }
     ```
 
@@ -183,55 +183,53 @@
   ```c
   #include <signal.h>
   
-  int main(int argc, char **argv){
+  int main(int argc, char **argv) {
+    static struct sigaction act;
+    void catchint(int);
   
-          static struct sigaction act;
-          void catchint(int);
+    act.sa_handler = catchint;
+    sigaction(SIGINT, &act, NULL);
   
-          act.sa_handler = catchint;
-          sigaction(SIGINT, &act, NULL);
-  
-          printf("sleep call1\n");
-          sleep(1);
-          printf("sleep call2\n");
-          sleep(1);
-          printf("exiting\n");
-          exit(0);
+    printf("sleep call1\n");
+    sleep(1);
+    printf("sleep call2\n");
+    sleep(1);
+    printf("exiting\n");
+    exit(0);
   }
   
-  void catchint(int signo){
-          printf("CATCHINT : %d\n", signo);
-          psignal(signo, "[Received Signal]");
+  void catchint(int signo) {
+    printf("CATCHINT : %d\n", signo);
+    psignal(signo, "[Received Signal]");
   }
   ```
-
-  - Ctrl + c 입력 받으면 무시
-
-  ```c
+  
+- Ctrl + c 입력 받으면 무시
+  
+```c
   act.sa_handler = SIG_IGN;
   sigaction(SIGINT, &act, NULL);
   ```
-
-  - Ctrl + c 입력 받으면 종료
-
-  ```c
+  
+- Ctrl + c 입력 받으면 종료
+  
+```c
   act.sa_handler = SIG_DFL;
   sigaction(SIGINT, &act, NULL);
   ```
-
-  - 여러개의 시그널 무시하는 경우
-    - SIGINT: interrupt key(^C)를입력하였을때(terminate)
-    - SIGQUIT: quit key(^\)를입력하였을때(terminate+core)
-
-  ```c
+  
+- 여러개의 시그널 무시하는 경우
+    - SIGINT: interrupt key(^C)를 입력했을 때(terminate)
+    - SIGQUIT: quit key(^\)를 입력했을 때(terminate+core)
+  
+```c
   act.sa_handler = SIG_IGN;
   sigaction(SIGINT, &act, NULL);
   sigaction(SIGQUIT, &act, NULL);
   ```
-
-- 한 프로세스에서 무시되는 signal은 exec()후에도 계속 무시된다.
-  exec으로 실행하면 process가 동일하기 때문에 signal을 계속 무시하게 된다
-
+  
+- 한 프로세스에서 무시되는 signal은 exec()후에도 계속 무시된다. exec으로 실행하면 process가 동일하기 때문에 signal을 계속 무시하게 된다
+  
 - Signal 집합 지정
 
   - sigemptyset => sigaddset : 전부 0으로 설정한 후 block할 시그널 설정
@@ -263,7 +261,7 @@
     sigdelset(&mask2, SIGCHLD);
     
     if(sigismember(&mask1, SIGINT))
-        printf("SIGINT is setting.\n");
+      printf("SIGINT is setting.\n");
     ```
 
 - 예제
@@ -288,70 +286,68 @@
     
     #define BUFSIZE 512
     
-    void catchsig(int signo){
-        //전달받은 시그널이 무엇인지 알려주는 함수
-        psignal(signo, "[Received Signal]");
+    void catchsig(int signo) {
+      //전달받은 시그널이 무엇인지 알려주는 함수
+      psignal(signo, "[Received Signal]");
     }
     
-    void do_child(){
-        int i;
-        static struct sigaction act;
+    void do_child() {
+      int i;
+      static struct sigaction act;
     
-        sigemptyset(&act.sa_mask);
-    //    sigaddset(&act.sa_mask, SIGINT);
-    //    sigaddset(&act.sa_mask, SIGUSR1);
-    //    sigaddset(&act.sa_mask, SIGUSR2);
+      sigemptyset(&act.sa_mask);
+      //    sigaddset(&act.sa_mask, SIGINT);
+      //    sigaddset(&act.sa_mask, SIGUSR1);
+      //    sigaddset(&act.sa_mask, SIGUSR2);
     
-        act.sa_handler = catchsig;
+      act.sa_handler = catchsig;
     
-        //sigaction(SIGINT, &act, NULL);
-        sigaction(SIGUSR1, &act, NULL);
-        sigaction(SIGUSR2, &act, NULL);
+      //sigaction(SIGINT, &act, NULL);
+      sigaction(SIGUSR1, &act, NULL);
+      sigaction(SIGUSR2, &act, NULL);
     
-        for(i=0;i<5;i++){
-            printf("child is running ... \n");
-            sleep(1);
-        }
+      for(i=0;i<5;i++) {
+        printf("child is running ... \n");
+        sleep(1);
+      }
     }
     
-    int main(int argc, char **argv){
-        int status;
-        pid_t pid;
+    int main(int argc, char **argv) {
+      int status;
+      pid_t pid;
     
-        pid = fork();
+      pid = fork();
     
-        if(pid == 0){
-            do_child();
-        }
-        else{
-            sleep(2);
-            kill(pid, SIGINT);
-            sleep(1);
-            kill(pid, SIGUSR1);
-            sleep(1);
-            kill(pid, SIGUSR2);
-        }
+      if(pid == 0) {
+        do_child();
+      } else {
+        sleep(2);
+        kill(pid, SIGINT);
+        sleep(1);
+        kill(pid, SIGUSR1);
+        sleep(1);
+        kill(pid, SIGUSR2);
+      }
     
-        wait(&status);
+      wait(&status);
     
-        if(WIFEXITED(status)){
-            printf("Exit status from %d was %d\n", pid, WEXITSTATUS(status));
-        }
-        else{
-            printf("Exit status from %d was %d\n", pid, WTERMSIG(status));
-        }
+      if(WIFEXITED(status)) {
+        printf("Exit status from %d was %d\n", pid, WEXITSTATUS(status));
+      } else {
+        printf("Exit status from %d was %d\n", pid, WTERMSIG(status));
+      }
     
-        exit(0);
+      exit(0);
     }
     ```
-
+    
   - 시그널 보내고 지정된 함수로 처리하는데 지정된 시그널은 block하기
 
     - block할 시그널로 SIGINT, SIGUSR1, SIGUSR2를 설정을 해두었음. 그러면 일단 시그널 처리는 기다리고 있다가 자식 프로세스 종료 후 block된 처리를 함
-    - SIGINT 시그널이 오면 지정된 함수 말고 기존의 처리 방식을 사용하게 설정했음
-
+  - SIGINT 시그널이 오면 지정된 함수 말고 기존의 처리 방식을 사용하게 설정했음
+  
     ```c
-    #include <stdio.h>
+  #include <stdio.h>
     #include <sys/types.h>
     #include <sys/stat.h>
     #include <sys/wait.h>
@@ -366,66 +362,64 @@
     
     #define BUFSIZE 512
     
-    void catchsig(int signo){
-        psignal(signo, "[Received Signal]");
+    void catchsig(int signo) {
+      psignal(signo, "[Received Signal]");
     }
     
-    void do_child(){
-        int i;
-        static struct sigaction act;
+    void do_child() {
+      int i;
+      static struct sigaction act;
     
-        sigemptyset(&act.sa_mask);
-        sigaddset(&act.sa_mask, SIGINT);
-        sigaddset(&act.sa_mask, SIGUSR1);
-        sigaddset(&act.sa_mask, SIGUSR2);
+      sigemptyset(&act.sa_mask);
+      sigaddset(&act.sa_mask, SIGINT);
+      sigaddset(&act.sa_mask, SIGUSR1);
+      sigaddset(&act.sa_mask, SIGUSR2);
     
-        act.sa_handler = catchsig;
+      act.sa_handler = catchsig;
     
-        sigaction(SIGINT, &act, NULL);
-        sigaction(SIGUSR1, &act, NULL);
-        sigaction(SIGUSR2, &act, NULL);
+      sigaction(SIGINT, &act, NULL);
+      sigaction(SIGUSR1, &act, NULL);
+      sigaction(SIGUSR2, &act, NULL);
     
-        for(i=0;i<5;i++){
-            printf("child is running ... \n");
-            sleep(1);
-        }
+      for(i=0;i<5;i++) {
+        printf("child is running ... \n");
+        sleep(1);
+      }
     }
     
-    int main(int argc, char **argv){
-        int status;
-        pid_t pid;
+    int main(int argc, char **argv) {
+      int status;
+      pid_t pid;
     
-        pid = fork();
+      pid = fork();
     
-        if(pid == 0){
-            do_child();
-        }
-        else{
-            sleep(2);
-            kill(pid, SIGINT);
-            sleep(1);
-            kill(pid, SIGUSR1);
-            sleep(1);
-            kill(pid, SIGUSR2);
-        }
+      if(pid == 0) {
+        do_child();
+      } else {
+        sleep(2);
+        kill(pid, SIGINT);
+        sleep(1);
+        kill(pid, SIGUSR1);
+        sleep(1);
+        kill(pid, SIGUSR2);
+      }
     
-        wait(&status);
+      wait(&status);
     
-        if(WIFEXITED(status)){
-            printf("Exit status from %d was %d\n", pid, WEXITSTATUS(status));
-        }
-        else{
-            printf("Exit status from %d was %d\n", pid, WTERMSIG(status));
-        }
+      if(WIFEXITED(status)) {
+        printf("Exit status from %d was %d\n", pid, WEXITSTATUS(status));
+      } else {
+        printf("Exit status from %d was %d\n", pid, WTERMSIG(status));
+      }
     
-        exit(0);
+      exit(0);
     }
     ```
-
+  
 - Signal 집합 지정 중 sa_sigaction()에 의한 signal handling
 
   ```c
-  int main(void){
+  int main(void) {
       static struct sigaction act;
       act.sa_flags = SA_SIGINFO;
       act.sa_sigaction = handler;
@@ -433,7 +427,7 @@
       ...
   }
   
-  void handler(int signo, siginfo_t *sf, ucontext_t *uc){
+  void handler(int signo, siginfo_t *sf, ucontext_t *uc) {
       psiginfo(sf, "...");
       printf("%d\n", sf->si_code);
   }
@@ -518,22 +512,22 @@
   - 예제
 
     ```c
-    int main(void){
-        sigset_t new;
-        
-        sigemptyset(&new);
-        sigaddset(&new, SIGINT);
-        sigaddset(&new, SIGQUIT);
-        sigprocmask(SIG_BLOCK, &new, (sigset_t *)NULL);
-        
-        printf("Blocking Signals : SIGINT, SIGQUIT\n");
-        printf("Send SIGQUIT\n");
-        kill(getpid(), SIGQUIT);
-        
-        printf("Unblocking Signals\n");
-        sigprocmask(SIG_UNBLOCK, &new, (sigset_t *)NULL);
-        
-        return 0;
+    int main(void) {
+      sigset_t new;
+    
+      sigemptyset(&new);
+      sigaddset(&new, SIGINT);
+      sigaddset(&new, SIGQUIT);
+      sigprocmask(SIG_BLOCK, &new, (sigset_t *)NULL);
+    
+      printf("Blocking Signals : SIGINT, SIGQUIT\n");
+      printf("Send SIGQUIT\n");
+      kill(getpid(), SIGQUIT);
+    
+      printf("Unblocking Signals\n");
+      sigprocmask(SIG_UNBLOCK, &new, (sigset_t *)NULL);
+    
+      return 0;
     }
     ```
 
@@ -546,26 +540,26 @@
     
     void catchint(int);
     
-    int main(int argc, char **argv){
-        int i, j, num[10], sum = 0;
-        static struct sigaction act;
+    int main(int argc, char **argv) {
+      int i, j, num[10], sum = 0;
+      static struct sigaction act;
     
-        act.sa_handler = catchint;
-        sigaction(SIGINT, &act, NULL);
+      act.sa_handler = catchint;
+      sigaction(SIGINT, &act, NULL);
     
-        for(i=0;i<5;i++){
-            scanf("%d", &num[i]);
-            sum += num[i];
-            for(j=0;j<=i;j++){
-                printf("...%d\n", num[i]);
-                sleep(1);
-            }
+      for(i=0;i<5;i++) {
+        scanf("%d", &num[i]);
+        sum += num[i];
+        for(j=0;j<=i;j++) {
+          printf("...%d\n", num[i]);
+          sleep(1);
         }
-        exit(0);
+      }
+      exit(0);
     }
     
-    void catchint(int signo){
-        printf("DO NOT INTERRUPT ... \n");
+    void catchint(int signo) {
+      printf("DO NOT INTERRUPT ... \n");
     }
     ```
 
@@ -576,32 +570,32 @@
     
     void catchint(int);
     
-    int main(int argc, char **argv){
-        int i, j, num[10], sum = 0;
-        static struct sigaction act;
-        sigset_t mask;
+    int main(int argc, char **argv) {
+      int i, j, num[10], sum = 0;
+      static struct sigaction act;
+      sigset_t mask;
     
-        act.sa_handler = catchint;
-        sigaction(SIGINT, &act, NULL);
+      act.sa_handler = catchint;
+      sigaction(SIGINT, &act, NULL);
     
-        sigemptyset(&mask);
-        sigaddset(&mask, SIGINT);
+      sigemptyset(&mask);
+      sigaddset(&mask, SIGINT);
     
-        for(i=0;i<5;i++){
-            sigprocmask(SIG_SETMASK, &mask, NULL);
-            scanf("%d", &num[i]);
-            sigprocmask(SIG_UNBLOCK, &mask, NULL);
-            sum += num[i];
-            for(j=0;j<=i;j++){
-                printf("...%d\n", num[i]);
-                sleep(1);
-            }
+      for(i=0;i<5;i++) {
+        sigprocmask(SIG_SETMASK, &mask, NULL);
+        scanf("%d", &num[i]);
+        sigprocmask(SIG_UNBLOCK, &mask, NULL);
+        sum += num[i];
+        for(j=0;j<=i;j++) {
+          printf("...%d\n", num[i]);
+          sleep(1);
         }
-        exit(0);
+      }
+      exit(0);
     }
     
-    void catchint(int signo){
-        printf("DO NOT INTERRUPT ... \n");
+    void catchint(int signo) {
+      printf("DO NOT INTERRUPT ... \n");
     }
     ```
 

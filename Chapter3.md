@@ -7,8 +7,8 @@
 ```C
 nread = read(fd1, buffer, BUFSIZE);
 while(nread > 0) {
-		write(fd2, buffer, nread);
-		nread = read(fd1, buffer, BUFSIZE);
+  write(fd2, buffer, nread);
+  nread = read(fd1, buffer, BUFSIZE);
 }
 ```
 
@@ -57,16 +57,16 @@ while(nread > 0) {
 
   ```c
   struct stat {
-                 dev_t     st_dev;         /* 장치파일의 위치 및 여부 device id */
-                 ino_t     st_ino;         /* 파일의 inode 번호 */
-                 mode_t    st_mode;        /* file permission 정보 */
-                 nlink_t   st_nlink;       /* 하드링크의 갯수 */
-                 uid_t     st_uid;         /* user id */
-                 gid_t     st_gid;         /* group id */
-                 dev_t     st_rdev;        /* 장치파일(inode)를 기술 */
-                 off_t     st_size;        /* 해당 파일의 총 크기*/
-                 blksize_t st_blksize;     /* 효율적인 I/O 파일 시스템 위한 블럭 사이즈*/
-                 blkcnt_t  st_blocks;      /* 할당된 블럭 사이즈 */
+    dev_t     st_dev;         /* 장치파일의 위치 및 여부 device id */
+    ino_t     st_ino;         /* 파일의 inode 번호 */
+    mode_t    st_mode;        /* file permission 정보 */
+    nlink_t   st_nlink;       /* 하드링크의 갯수 */
+    uid_t     st_uid;         /* user id */
+    gid_t     st_gid;         /* group id */
+    dev_t     st_rdev;        /* 장치파일(inode)를 기술 */
+    off_t     st_size;        /* 해당 파일의 총 크기*/
+    blksize_t st_blksize;     /* 효율적인 I/O 파일 시스템 위한 블럭 사이즈*/
+    blkcnt_t  st_blocks;      /* 할당된 블럭 사이즈 */
   };    
   // 출처: http://cokk.tistory.com/51 [試行錯誤(시행착오)]
   ```
@@ -74,20 +74,20 @@ while(nread > 0) {
 - example.c
   
 ```C
-  #include<fcntl.h>
-  #include<sys/types.h>
-  #include<sys/stat.h>
-  #include<stdio.h>
-  
+#include<fcntl.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+#include<stdio.h>
+
 int main() {
-      //os는 구조체 타입으로 stat/fstat의 값을 반환하기 때문에 구조체 타입 선언이 필요함
-      struct stat buf;
-      stat("data", &buf);
-      //%o 8진수 출력, st_mode &0777 비트화해서 출력하는 것은 그 부분만 출력하기 위해서
-      printf("%o %ld\n", buf.st_mode&0777, buf.st_size);
-  }
-  ```
-  
+  //os는 구조체 타입으로 stat/fstat의 값을 반환하기 때문에 구조체 타입 선언이 필요함
+  struct stat buf;
+  stat("data", &buf);
+  //%o 8진수 출력, st_mode &0777 비트화해서 출력하는 것은 그 부분만 출력하기 위해서
+  printf("%o %ld\n", buf.st_mode&0777, buf.st_size);
+}
+```
+
 - 실행 및 출력
   
 ```
@@ -100,7 +100,7 @@ int main() {
   -rwxr-xr-x. 1 s13011022 class 8632  9월 12 16:55 a.out
   -rw-r--r--. 1 s13011022 class    6  9월 12 16:55 data
   -rw-r--r--. 1 s13011022 class  306  9월 12 16:55 example.c
-  ```
+```
 
 ### Access Permission
 
@@ -159,24 +159,24 @@ int main() {
   ```c
   //0400 Read USER
   if(s.st_mode&S_IRUSR)
-  		printf("소유자 읽기 권한 설정");
+    printf("소유자 읽기 권한 설정");
 
   //파일 종류 확인
   if(S_ISREG(s.st_mode))
-  		printf("일반 파일")
+    printf("일반 파일")
 
-  const char *get_filetype(struct stat *buf) {
-      if(S_ISREG(buf->st_mode))
-          return "regular";
-      if(S_ISDIR(buf->st_mode))
-          return "directory";
-      if(S_ISCHR(buf->st_mode))
-          return "charater";
-      if(S_ISBLK(buf->st_mode))
-          return "block";
-      if(S_ISFIFO(buf->st_mode))
-          return "fifo";
-      return "unknown";
+    const char *get_filetype(struct stat *buf) {
+    if(S_ISREG(buf->st_mode))
+      return "regular";
+    if(S_ISDIR(buf->st_mode))
+      return "directory";
+    if(S_ISCHR(buf->st_mode))
+      return "charater";
+    if(S_ISBLK(buf->st_mode))
+      return "block";
+    if(S_ISFIFO(buf->st_mode))
+      return "fifo";
+    return "unknown";
   }
   ```
   
@@ -221,15 +221,14 @@ int main() {
     int link(const char *orginal_path, const char *new_path);
     ```
 
-    return 값 : 0 or new_path가 이미 존재하는 이름이면 -1반환
+  - return 값 : 0 or new_path가 이미 존재하는 이름이면 -1반환
 
-  - 한 파일에 하나 이상의 이름
+  - 한 파일에 하나 이상의 이름. 파일에 두 개 이상의 이름을 붙일 수 있음
     
-  - 파일에 두 개 이상의 이름을 붙일 수 있음
     - `link("a.c", "b.c")` 원래는 a.c 라는 이름표가 파일을 가리키고 있는데, b.c라는 이름표로 하나 더 가리키는 것임
     - (시험볼 때 그림그리라고 하면 둘 다 가리키고 있는 모습을 그려야함. a.c를 원래 이름이라고 해서 포인터로 가리키고 있는 것을 안 그리면 안 됨)
     - 파일에 원래 이름이란 것이 딱 없어서 a.c, b.c 둘 다 가리키고 있는 것임
-
+    
   - link count : link의 수
 
   - unlink `unlink("a.out")`
@@ -237,6 +236,7 @@ int main() {
     - link를 제거 하는 것. link_count— —;
     - 파일은 삭제가 되는 것이 아니라 unlink() 함수 기능으로 파일을 가리키고 있는 이름표 포인터를 제거하는(unlink) 것임
     - 이름표 포인터 link를 모두 제거하면 파일을 가리키고 있는 포인터가 없어서 파일에 접근을 못하는 것임
+    
   - link_count가 0이 되면 free block으로 실제로 파일이 제거된다고 함
     
   - 예제
@@ -258,16 +258,15 @@ int main() {
     #include<unistd.h>
 
     int main() {
-  		link("test1", "test2");
-    		link("test1", "A/B/C/test3");
-    
-  		return 0;
-    }
+  	  link("test1", "test2");
+      link("test1", "A/B/C/test3");
+      return 0;
+  	}
     ```
     
   - test1에 대한 link test2, test3를 생성하면 이렇게 link수가 3으로 연결된 이름 세 개가 존재한다는 것을 알 수 있고 terminal앱 자체에서 파일 이름 색도 같게 표시해주고 셋 중에 하나의 파일을 변경해도 다 같이 바뀜(수정 시간이 같은 것을 보면 알 수 있음)
     
-  ```
+    ```
     [s13011022@bce LAB09-12]$ ls -l
     합계 48
     drwxr-xr-x. 3 s13011022 class 4096  9월 12 20:13 A
@@ -282,7 +281,7 @@ int main() {
     
   - 그래서 link는 파일 하나에 여러개의 이름표 포인터를 가지고 있다고 보면 됨
 
-- symbolic link / 주의 link와 다름. 윈도우에서 바로가기라고 생각하면 됨
+- symbolic link / 주의 link와 다름. 윈도우에서 바로가기라고 생각하면 편하지만 두 개는 다름
 
   -  link의 제한점
 
@@ -319,13 +318,13 @@ int main() {
     #include<unistd.h>
 
     int main() {
-		symlink("test1", "test_sym");
+		  symlink("test1", "test_sym");
     
-		return 0;
+		  return 0;
     }
     ```
     
-```
+    ```
     [s13011022@bce LAB09-12]$ ls -l
     합계 48
     drwxr-xr-x. 3 s13011022 class 4096  9월 12 20:13 A
@@ -338,15 +337,16 @@ int main() {
     -rw-r--r--. 3 s13011022 class   31  9월 12 20:40 test2
     lrwxrwxrwx. 1 s13011022 class    5  9월 12 20:42 test_sym -> test1
     ```
-    
+  
 - 이런 상태에서 test1, 2, 3는 link로 같은 파일을 가리키고 있으니 test1, 2, 3 중 하나를 변경하면 다 같이 변경이 된다.
-    
+
     ```
-$ vi test_sym
+    $ vi test_sym
     //aaaaa
     ```
-    
-    - 근데 test_sym 파일을 vi로 변경을 해서 aaaaa만 남겨두고 나머지를 다 지운다
+
+- 근데 test_sym 파일을 vi로 변경을 해서 aaaaa만 남겨두고 나머지를 다 지운다
+
 - 그리고 ls -l 명령으로 확인해보면 수정 시간이 test1, 2 , 3만 바뀌고 test_sym 파일 자체는 수정 시간이 변동이 안 돼있다
     - test_sym 파일은 사실상 test1이라는 파일을 가리키고만 있고 내용은 가지고 있지 않는 것이다
     - test_sym이라는 파일을 따로 만들어놓은 것이고, test1이라는 이름표 포인터를 갖고 있는 것임
@@ -522,9 +522,9 @@ $ vi test_sym
     ```
 
   - DIR형의 data structure에 대한 pointer를 return. 실패 시 null pointer return
-    
+  
 - Directory는 사실 파일이고, 내부에 목록 리스트로 데이터를 가지고 있음
-    
+  
     - 그래서 파일이 가지고 있는 entry 정보를
     - 운영체제가 entry 일부만 가져와서 가지고 있으면
   - P1은 포인터를 가지고 entry 값을 참조한다 ==> 약간 이해가 안 가지만 계속 찾아보다가 질문
@@ -556,11 +556,11 @@ $ vi test_sym
 
       ```c
       struct dirent {
-          ino_t d_ino;				//inode number
-          off_t d_off;				//offset to the next dirent
-          unsigned short d_reclen;	//length of this record
-          unsigned char d_type;		//type of file. not supported by all file system types
-          char d_name[256];			//filename
+        ino_t d_ino;				//inode number
+        off_t d_off;				//offset to the next dirent
+        unsigned short d_reclen;	//length of this record
+        unsigned char d_type;		//type of file. not supported by all file system types
+        char d_name[256];			//filename
       }
       ```
 
@@ -572,27 +572,27 @@ $ vi test_sym
 
     ```c
     int main() {
-        DIR *dp;
-        struct dirent *d;
-        dp = opendir(".");
+      DIR *dp;
+      struct dirent *d;
+      dp = opendir(".");
+      d = readdir(dp);
+      while(d != NULL) {
+        printf("%ld : %s \n", d->d_ino, d->d_name);
         d = readdir(dp);
-        while(d != NULL) {
-            printf("%ld : %s \n", d->d_ino, d->d_name);
-            d = readdir(dp);
-        }
-    return 0;
+      }
+      return 0;
     }
     ```
-    
+  
 - Directory 파일 읽어오는 과정
   
-|     하드디스크      |                      OS                      |                  P1                   |
+  |     하드디스크      |                      OS                      |                  P1                   |
   | :-----------------: | :------------------------------------------: | :-----------------------------------: |
   | 파일이 원래 있는 곳 | 여기에서 파일 한 덩어리를 가져와서 OS에 저장 |          dp = opendir(".");           |
   |                     |      파일 정보는 운영체제가 가지고 있음      | dp 포인터를 가져와서 파일에 접근한다  |
   |                     |         entry 구조체 형태 : id, name         |           d = readdir(dp);            |
   |                     |                                              | d 포인터 주소만 가져와서 entry에 접근 |
-  
+
 - Directory file pointer 이동
 
   - 사용법
@@ -608,5 +608,5 @@ $ vi test_sym
     - d->d_ino의 값은 일정한 크기이지만,
     - d->d_name은 이름이 길고 짧고 불규칙해서 entry하나하나가 일정하지않음
 - 그래서 entry 하나의 크기를 직접 읽어오기 전까지는 알 수 없음
-    
+  
   - 그래서 rewinddir 시스템 콜 사용
